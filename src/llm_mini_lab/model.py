@@ -62,3 +62,54 @@ class GPTModel(nn.Module):
         x = self.final_norm(x)
         logits = self.out_head(x)
         return logits
+
+class LoopedGPTModel(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+
+        self.tok_emb = nn.Embedding(
+            cfg["vocab_size"],
+            cfg["emb_dim"],
+        )
+        self.pos_emb = nn.Embedding(
+            cfg["context_length"],
+            cfg["emb_dim"],
+        )
+        self.drop_emb = nn.Dropout(cfg["drop_rate"])
+
+        self.trf_blocks = nn.ModuleList([
+            TransformerBlock(cfg)
+            for _ in range(cfg["n_unique_layers"])
+        ])
+
+        self.num_loops = cfg["num_loops"]
+
+        self.final_norm = LayerNorm(cfg["emb_dim"])
+        self.out_head = nn.Linear(
+            cfg["emb_dim"],
+            cfg["vocab_size"],
+            bias=False,
+        )
+
+    def forward(self, in_idx, num_loops=None):
+        _, seq_len = in_idx.shape
+
+        positions = torch.arange(
+            seq_len,
+            device=in_idx.device,
+        )
+
+        x = self.tok_emb(in_idx) + self.pos_emb(positions)
+        x = self.drop_emb(x)
+
+        loops = self.num_loops if num_loops is None else num_loops
+
+        if loops < 1:
+            raise ValueError("num_loops debe ser al menos 1")
+
+        for _ in range(loops):
+            for block in self.trf_blocks:
+                x = block(x)
+
+        x = self.final_norm(x)
+        return self.out_head(x)

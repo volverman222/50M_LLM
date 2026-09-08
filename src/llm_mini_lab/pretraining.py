@@ -43,9 +43,56 @@ GPT_CONFIG_50M = {
     "drop_rate": 0.0,
     "qkv_bias": False,
 }
+
+LOOPED_GPT_CONFIG = {
+    "vocab_size": 50257,
+    "context_length": 256,
+    "emb_dim": 512,
+    "n_heads": 8,
+
+    # Arquitectura recurrente
+    "n_unique_layers": 3,
+    "num_loops": 2,
+
+    "drop_rate": 0.0,
+    "qkv_bias": False,
+    "ff_activation": "swiglu",
+    "ff_hidden_dim": 1376,
+}
 # ---------------------------------------------------------------------------
 # Text helpers
 # ---------------------------------------------------------------------------
+class LocalTextDataset(Dataset):
+    """Dataset of contiguous, non-overlapping token blocks from a text file."""
+
+    def __init__(self, file_path, max_length):
+        file_path = Path(file_path)
+        if not file_path.is_file():
+            raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
+
+        text = file_path.read_text(encoding="utf-8")
+        tokenizer = tiktoken.get_encoding("gpt2")
+        self.tokens = tokenizer.encode(
+            text, allowed_special={"<|endoftext|>"}
+        )
+        self.max_length = max_length
+
+        if len(self.tokens) <= max_length:
+            raise ValueError(f"{file_path} no contiene suficientes tokens")
+
+    def __len__(self):
+        return (len(self.tokens) - 1) // self.max_length
+
+    def __getitem__(self, index):
+        start = index * self.max_length
+        end = start + self.max_length
+        inputs = torch.tensor(self.tokens[start:end], dtype=torch.long)
+        targets = torch.tensor(
+            self.tokens[start + 1:end + 1], dtype=torch.long
+        )
+        return inputs, targets
+
+
 def text_to_token_ids(text, tokenizer):
     encoded = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)  # shape: (1, n_tokens)
@@ -72,6 +119,53 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 # ---------------------------------------------------------------------------
 # Loss, evaluation and training (section 5.4)
 # ---------------------------------------------------------------------------
+def init_xavier(module):
+    """Initialize linear and embedding weights with Xavier uniform values."""
+    if isinstance(module, torch.nn.Linear):
+        torch.nn.init.xavier_uniform_(module.weight)
+        if module.bias is not None:
+            torch.nn.init.zeros_(module.bias)
+    elif isinstance(module, torch.nn.Embedding):
+        torch.nn.init.xavier_uniform_(module.weight)
+
+
+def evaluate(model, data_loader, max_batches, device=None):
+    """Return mean cross-entropy loss while restoring the model's mode."""
+    if device is None:
+        try:
+            device = next(model.parameters()).device
+        except StopIteration as exc:
+            raise ValueError(
+                "device is required when the model has no parameters"
+            ) from exc
+
+    was_training = model.training
+    model.eval()
+    total_loss = 0.0
+    batches_evaluated = 0
+
+    with torch.inference_mode():
+        for batch_idx, (inputs, targets) in enumerate(data_loader):
+            if batch_idx >= max_batches:
+                break
+
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            logits = model(inputs)
+            loss = F.cross_entropy(
+                logits.flatten(0, 1), targets.flatten()
+            )
+            total_loss += loss.item()
+            batches_evaluated += 1
+
+    model.train(was_training)
+
+    if batches_evaluated == 0:
+        raise RuntimeError("El dataloader de validación no produjo batches")
+
+    return total_loss / batches_evaluated
+
+
 def calc_loss_batch(input_batch, target_batch, model, device):
     input_batch = input_batch.to(device)
     target_batch = target_batch.to(device)

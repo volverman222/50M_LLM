@@ -13,7 +13,8 @@ class GELU(nn.Module):
             (x + 0.044715 * torch.pow(x, 3))
         ))
 
-
+""""
+Deprecrated
 class FeedForward(nn.Module):
 
     def __init__(self, cfg):
@@ -23,6 +24,56 @@ class FeedForward(nn.Module):
             GELU(),
             nn.Linear(4 * cfg["emb_dim"], cfg["emb_dim"]),
         )
+
+    def forward(self, x):
+        return self.layers(x)
+"""
+class SwiGLU(nn.Module):
+    def __init__(self, emb_dim, hidden_dim):
+        super().__init__()
+        self.gate_proj = nn.Linear(emb_dim, hidden_dim)
+        self.value_proj = nn.Linear(emb_dim, hidden_dim)
+        self.out_proj = nn.Linear(hidden_dim, emb_dim)
+
+    def forward(self, x):
+        gate = torch.nn.functional.silu(self.gate_proj(x))
+        value = self.value_proj(x)
+        return self.out_proj(gate * value)
+
+
+class FeedForward(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+
+        activation = cfg.get("ff_activation", "gelu").lower()
+        emb_dim = cfg["emb_dim"]
+
+        if activation == "gelu":
+            hidden_dim = cfg.get("ff_hidden_dim", 4 * emb_dim)
+
+            self.layers = nn.Sequential(
+                nn.Linear(emb_dim, hidden_dim),
+                GELU(),
+                nn.Linear(hidden_dim, emb_dim),
+            )
+
+        elif activation == "swiglu":
+            # Aproximadamente los mismos parámetros que el FFN GELU 4x.
+            hidden_dim = cfg.get(
+                "ff_hidden_dim",
+                int(8 * emb_dim / 3),
+            )
+
+            self.layers = SwiGLU(
+                emb_dim=emb_dim,
+                hidden_dim=hidden_dim,
+            )
+
+        else:
+            raise ValueError(
+                f"Activación FFN no soportada: {activation!r}. "
+                "Utiliza 'gelu' o 'swiglu'."
+            )
 
     def forward(self, x):
         return self.layers(x)
