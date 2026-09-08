@@ -29,10 +29,6 @@ pip install -e ".[training]"
 
 Use `notebooks/Test_pretrain.ipynb` for a short smoke test of the 50M model.
 
-For an optimized CUDA run with gradient accumulation, mixed precision,
-checkpoint recovery, Weights & Biases, and optional Hugging Face snapshots,
-use `notebooks/pretraining/full/pretrain_external_gpu_v2.ipynb`.
-
 ## Required adaptation before the challenge run
 
 The inherited `GPT_CONFIG_124M` configuration is approximately 124M parameters
