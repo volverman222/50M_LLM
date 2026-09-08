@@ -1,0 +1,150 @@
+REGLAS DEL TRACK 01 FOUNDATION MODEL
+Global Innovation Build Challenge V2
+
+Fuente oficial: https://gibc-v2.devpost.com/rules
+Consulta: 8 de septiembre de 2026
+
+RESUMEN
+
+El Track 01 TECH Foundation Model consiste en diseñar y entrenar desde cero
+un modelo de lenguaje pequeño. El límite máximo es de 50 millones de
+parámetros entrenables. No basta con una idea, una presentación o una
+demostración estática: debe existir código ejecutable, modelo funcional y una
+entrega pública que permita a los jueces entender y evaluar el trabajo.
+
+1. REQUISITOS TECNICOS DEL TRACK
+
+1.1 Limite de parametros
+
+- El modelo puede tener como máximo 50.000.000 de parámetros entrenables en
+  total.
+- El conteo incluye obligatoriamente los embeddings de tokens y la cabeza de
+  salida (output head).
+- El repositorio debe contener la configuración del modelo y un script o una
+  salida impresa que demuestre el número de parámetros.
+
+1.2 Entrenamiento desde cero
+
+- Los pesos deben entrenarse desde cero durante el proyecto.
+- No está permitido inicializar desde pesos preentrenados.
+- No está permitido hacer fine-tuning de un modelo existente.
+- No está permitido destilar un modelo mayor.
+
+1.3 Herramientas y datos permitidos
+
+- Se pueden usar frameworks y librerías estándar, por ejemplo PyTorch, JAX,
+  TensorFlow, Hugging Face Transformers y librerías de tokenización.
+- Se pueden usar conjuntos de datos públicos existentes, por ejemplo FineWeb,
+  TinyStories o The Pile.
+- "Desde cero" se refiere a los pesos y a la ejecución del entrenamiento; no
+  exige reinventar las herramientas.
+- Hay que acreditar en Built With y en el README todo lo utilizado.
+
+1.4 APIs de inferencia
+
+- No se puede utilizar una API de inferencia alojada como el modelo presentado.
+- Esto incluye el beneficio de patrocinador Featherless. Puede emplearse para
+  tooling, procesamiento de datos o evaluación, pero no como el modelo de la
+  entrega.
+
+2. INFORME Y EVALUACION OBLIGATORIOS
+
+El README debe incluir:
+
+- Hardware empleado para entrenar.
+- Tiempo total de entrenamiento.
+- Cómputo aproximado utilizado.
+- Conteo de parámetros y configuración del modelo.
+- Resultados de evaluación.
+- El script de evaluación utilizado.
+
+La evaluación se realiza con lm-evaluation-harness en los benchmarks:
+
+- HellaSwag
+- ARC-Easy
+- PIQA
+- WinoGrande
+
+Además, se mide la perplejidad sobre una partición retenida de WikiText-103.
+Los resultados de estas pruebas deben informarse en el README.
+
+3. CRITERIOS DE EVALUACION DEL TRACK 01
+
+Los jueces puntúan únicamente con los siguientes criterios del track:
+
+- Perplejidad y precisión: calidad de modelado de lenguaje en validación y
+  benchmarks.
+- Rendimiento de razonamiento: lógica, matemáticas y sentido común.
+- Eficiencia de entrenamiento: cómputo, velocidad y memoria.
+- Innovación: arquitectura, estrategia de datos o método de entrenamiento.
+- Documentación y demo: README, reporte técnico, resultados y claridad del
+  vídeo.
+
+4. ENTREGA OBLIGATORIA EN DEVPOST
+
+Antes de la fecha límite deben completarse los seis elementos:
+
+1. Descripción del proyecto: qué se construyó, qué problema resuelve y cómo
+   funciona.
+2. Código fuente: repositorio público de GitHub, GitLab, Bitbucket o Hugging
+   Face, con README, requisitos, instalación e instrucciones de ejecución.
+3. Vídeo demo: entre 2 y 5 minutos en YouTube, Vimeo o Youku. Puede ser no
+   listado, pero no privado; debe mostrar el proyecto funcionando y explicar
+   el enfoque. Audio en inglés o subtítulos en inglés.
+4. Built With: lista completa de tecnologías, frameworks, librerías, APIs,
+   datasets, herramientas de IA y hardware usados.
+5. Información del equipo: nombre real completo de cada integrante y su cuenta
+   de Devpost vinculada a la entrega.
+6. Capturas: al menos tres imágenes de calidad que muestren la interfaz, el
+   pipeline, curvas de entrenamiento o la configuración técnica.
+
+5. ELEGIBILIDAD Y NORMAS GENERALES RELEVANTES
+
+- Solo estudiantes de 13 años o más. Las personas menores de 18 años necesitan
+  permiso de padre, madre o tutor para participar y publicar su nombre.
+- Se puede participar individualmente o en equipo de hasta 6 personas.
+- Cada equipo presenta exactamente un proyecto en un único track.
+- Una persona solo puede pertenecer a un equipo participante.
+- El proyecto debe realizarse durante el hackathon, del 11 de julio al 21 de
+  septiembre de 2026. No se acepta un proyecto preexistente, comercial o
+  sustancialmente igual a una entrega anterior.
+- Se permite código de terceros, bibliotecas, datos públicos y herramientas de
+  IA, siempre que se acrediten adecuadamente.
+- Los asistentes de programación con IA están permitidos, pero hay que listar
+  las herramientas empleadas en Built With e indicar en el README qué partes
+  recibieron asistencia de IA.
+- El repositorio debe ser público y accesible sin restricciones. Hay que
+  documentar claves de pago, dependencias inusuales o entornos especiales.
+- La documentación, la descripción y el vídeo deben estar en inglés.
+- El estado del repositorio en la fecha límite es el que se juzga; los commits
+  posteriores pueden ignorarse.
+- Plagio, acoso o tergiversar el trabajo supone expulsión.
+
+6. FECHAS
+
+- Apertura: 11 de julio de 2026, 12:00, hora de Taipei (UTC+8).
+- Fecha límite de entrega: 21 de septiembre de 2026, 23:45, hora de Taipei
+  (UTC+8).
+- Evaluación: del 22 al 27 de septiembre de 2026.
+- Anuncio de ganadores y ceremonia virtual: 29 de septiembre de 2026.
+
+Para España peninsular, la fecha límite equivale a las 17:45 CEST del 21 de
+septiembre de 2026. Confirma siempre la hora en Devpost antes de enviar.
+
+LISTA DE VERIFICACION RAPIDA
+
+[ ] Modelo entrenado desde cero, sin pesos preentrenados, fine-tuning ni
+    destilación.
+[ ] Máximo de 50 millones de parámetros, contando embeddings y output head.
+[ ] Script/salida de conteo y configuración del modelo en el repositorio.
+[ ] README con hardware, tiempo de entrenamiento, cómputo y resultados.
+[ ] Evaluaciones reproducibles: HellaSwag, ARC-Easy, PIQA, WinoGrande y
+    perplejidad en WikiText-103.
+[ ] Repositorio público con instrucciones para ejecutar.
+[ ] Seis campos de Devpost completos, incluido vídeo en inglés y tres capturas.
+[ ] Todas las dependencias, datos y herramientas de IA acreditadas.
+[ ] Entrega enviada antes de las 23:45 UTC+8 del 21 de septiembre de 2026.
+
+Nota: este documento es un resumen operativo basado en las reglas publicadas
+en Devpost. La página oficial de reglas prevalece si se actualiza o existe
+cualquier discrepancia.

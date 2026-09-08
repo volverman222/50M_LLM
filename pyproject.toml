@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-mini-lab"
+version = "0.1.0"
+description = "Educational GPT pretraining, optimization, and benchmark experiments"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "tiktoken",
+    "torch",
+]
+
+[project.optional-dependencies]
+training = ["datasets", "huggingface-hub", "wandb"]
+benchmarks = ["datasets", "matplotlib", "requests"]
+huggingface = ["transformers"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
