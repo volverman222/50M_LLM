@@ -192,7 +192,9 @@ def adapt_winogrande(example: Mapping[str, Any]) -> MultipleChoiceExample:
 BENCHMARKS: dict[str, tuple[str, str | None, str, Callable[..., MultipleChoiceExample]]] = {
     "hellaswag": ("Rowan/hellaswag", None, "validation", adapt_hellaswag),
     "arc_easy": ("allenai/ai2_arc", "ARC-Easy", "validation", adapt_arc_easy),
-    "piqa": ("ybisk/piqa", None, "validation", adapt_piqa),
+    # The original ybisk/piqa repository retains a legacy piqa.py loader,
+    # unsupported by datasets>=4. lighteval publishes the same split as Parquet.
+    "piqa": ("lighteval/piqa", "plain_text", "validation", adapt_piqa),
     "winogrande": ("allenai/winogrande", "winogrande_xl", "validation", adapt_winogrande),
 }
 
@@ -250,16 +252,19 @@ def evaluate_benchmark_suite(
     context_length: int | None = None,
     autocast_dtype: torch.dtype | None = None,
 ) -> dict[str, dict[str, float | int]]:
-    """Evaluate all requested tasks; datasets are cached after their first download."""
-    return {
-        name: evaluate_benchmark(
-            name,
-            model,
-            tokenizer,
-            device,
-            max_examples=max_examples,
-            context_length=context_length,
-            autocast_dtype=autocast_dtype,
-        )
-        for name in names
-    }
+    """Evaluate available tasks without aborting training on a download failure."""
+    results = {}
+    for name in names:
+        try:
+            results[name] = evaluate_benchmark(
+                name,
+                model,
+                tokenizer,
+                device,
+                max_examples=max_examples,
+                context_length=context_length,
+                autocast_dtype=autocast_dtype,
+            )
+        except Exception as exc:
+            print(f"Aviso: benchmark {name} omitido: {exc}")
+    return results
