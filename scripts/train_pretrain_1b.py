@@ -69,6 +69,14 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
     parser.add_argument("--eval-batches", type=int, default=20)
     parser.add_argument("--log-every", type=int, default=10)
     parser.add_argument("--save-every", type=int, default=1_000)
+    parser.add_argument(
+        "--hf-upload-every", type=int, default=5_000,
+        help="Sube latest.pt a Hugging Face cada N updates; 0 lo desactiva.",
+    )
+    parser.add_argument(
+        "--hf-repo", default="volverman/mi-llm-50m-checkpoints",
+        help="Repositorio de Hugging Face que recibe los checkpoints.",
+    )
     parser.add_argument("--benchmark-every", type=int, default=0,
                         help="0 desactiva benchmarks durante el entrenamiento.")
     parser.add_argument("--benchmark-max-examples", type=int, default=100)
@@ -101,6 +109,8 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
         parser.error("--warmup-ratio debe estar entre 0 y 1")
     if args.hourly_cost is not None and args.hourly_cost < 0:
         parser.error("--hourly-cost no puede ser negativo")
+    if args.hf_upload_every < 0:
+        parser.error("--hf-upload-every debe ser 0 o un entero positivo")
     return args
 
 
@@ -166,6 +176,25 @@ def atomic_save_json(payload: dict[str, Any], path: Path) -> None:
         encoding="utf-8",
     )
     os.replace(temporary, path)
+
+
+def upload_checkpoint_to_hf(path: Path, repo_id: str, update: int) -> bool:
+    """Upload a checkpoint without interrupting an expensive training run."""
+    try:
+        from huggingface_hub import HfApi
+
+        HfApi().upload_file(
+            path_or_fileobj=str(path),
+            path_in_repo=path.name,
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message=f"Checkpoint update {update:,}",
+        )
+    except Exception as exc:  # Network/auth errors must not stop training.
+        print(f"Aviso: no se pudo subir {path.name} a {repo_id}: {exc}")
+        return False
+    print(f"Hugging Face: {path.name} subido a {repo_id}")
+    return True
 
 
 def get_hourly_cost(cli_value: float | None) -> float:
@@ -405,7 +434,9 @@ def main(dataset: str = "fineweb") -> None:
                     if wandb:
                         wandb.log({"update": update, **benchmark_log})
 
-                if update % args.save_every == 0:
+                save_for_hf = (args.hf_upload_every > 0
+                               and update % args.hf_upload_every == 0)
+                if update % args.save_every == 0 or save_for_hf:
                     # Se sobrescribe para no llenar un disco de 16 GB con los
                     # estados (modelo + Adam) de decenas de checkpoints.
                     path = args.checkpoint_dir / "latest.pt"
@@ -418,6 +449,8 @@ def main(dataset: str = "fineweb") -> None:
                         total_elapsed, total_cost,
                     ), path)
                     print(f"Checkpoint: {path}")
+                    if save_for_hf:
+                        upload_checkpoint_to_hf(path, args.hf_repo, update)
 
                 if update >= max_updates or tokens_seen >= args.target_tokens:
                     break
@@ -438,6 +471,8 @@ def main(dataset: str = "fineweb") -> None:
             model, optimizer, scheduler, scaler, cfg, update, tokens_seen,
             stream_epoch, run.id if run else None, total_elapsed, total_cost,
         ), final_path)
+        if args.hf_upload_every > 0:
+            upload_checkpoint_to_hf(final_path, args.hf_repo, update)
         summary = {
             "dataset": dataset,
             "tokens_seen": tokens_seen,
