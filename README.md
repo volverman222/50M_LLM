@@ -29,6 +29,25 @@ pip install -e ".[training]"
 
 Use `notebooks/Test_pretrain.ipynb` for a short smoke test of the 50M model.
 
+## Benchmarks during training
+
+`llm_mini_lab.benchmarks` evaluates HellaSwag, ARC-Easy, PIQA, and WinoGrande
+as zero-shot multiple-choice tasks. Install the optional dependency with
+`pip install -e ".[benchmarks]"`, then call:
+
+```python
+from llm_mini_lab.benchmarks import evaluate_benchmark_suite
+
+metrics = evaluate_benchmark_suite(
+    model, tokenizer, device, max_examples=25, context_length=256
+)
+```
+
+The datasets are loaded once and reused by later calls, which makes this
+suitable for periodic evaluation inside a training loop. The loop in
+`notebooks/Test_pretrain-v4.5_Looped_trf.ipynb` includes W&B logging for all
+four tasks.
+
 ## Required adaptation before the challenge run
 
 The inherited `GPT_CONFIG_124M` configuration is approximately 124M parameters

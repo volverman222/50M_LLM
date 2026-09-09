@@ -3,5 +3,6 @@ __pycache__/
 *.py[cod]
 checkpoints/*
 !checkpoints/.gitkeep
+Videos_propios/
 wandb/
 .DS_Store
