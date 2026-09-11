@@ -1,8 +1,12 @@
 """Educational utilities for building and evaluating small GPT models."""
 
-from .model import GPTModel, TransformerBlock
-from .hellaswag import evaluate_hellaswag, render_hellaswag_example
-from .benchmarks import evaluate_benchmark, evaluate_benchmark_suite
+from .models import GPTModel, TransformerBlock
+from .evaluation import (
+    evaluate_benchmark,
+    evaluate_benchmark_suite,
+    evaluate_hellaswag,
+    render_hellaswag_example,
+)
 
 __all__ = [
     "GPTModel",
