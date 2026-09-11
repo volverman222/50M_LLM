@@ -89,6 +89,8 @@ def _normalized_completion_losses(
 
 def _context_length(model: torch.nn.Module, value: int | None) -> int:
     if value is None:
+        value = getattr(model, "context_length", None)
+    if value is None:
         value = getattr(getattr(model, "pos_emb", None), "num_embeddings", None)
     if value is None:
         value = getattr(getattr(model, "config", None), "block_size", None)

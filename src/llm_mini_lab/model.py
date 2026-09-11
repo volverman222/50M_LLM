@@ -4,16 +4,30 @@ import torch.nn as nn
 from .attention import FeedForward, LayerNorm, MultiHeadAttention
 
 
+def _positional_encoding(cfg):
+    """Return the configured positional encoding, preserving legacy defaults."""
+    encoding = cfg.get("positional_encoding", "learned").lower()
+    if encoding not in {"learned", "rope"}:
+        raise ValueError(
+            f"Codificación posicional no soportada: {encoding!r}. "
+            "Utiliza 'learned' o 'rope'."
+        )
+    return encoding
+
+
 class TransformerBlock(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        positional_encoding = _positional_encoding(cfg)
         self.att = MultiHeadAttention(
             d_in=cfg["emb_dim"],
             d_out=cfg["emb_dim"],
             context_length=cfg["context_length"],
             num_heads=cfg["n_heads"],
             dropout=cfg["drop_rate"],
-            qkv_bias=cfg["qkv_bias"])
+            qkv_bias=cfg["qkv_bias"],
+            use_rope=positional_encoding == "rope",
+            rope_base=cfg.get("rope_base", 10_000))
         self.ff = FeedForward(cfg)
         self.norm1 = LayerNorm(cfg["emb_dim"])
         self.norm2 = LayerNorm(cfg["emb_dim"])
@@ -40,8 +54,11 @@ class TransformerBlock(nn.Module):
 class GPTModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
+        self.context_length = cfg["context_length"]
+        self.positional_encoding = _positional_encoding(cfg)
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
-        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        if self.positional_encoding == "learned":
+            self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
 
         self.trf_blocks = nn.Sequential(
@@ -55,8 +72,11 @@ class GPTModel(nn.Module):
     def forward(self, in_idx):
         batch_size, seq_len = in_idx.shape
         tok_embeds = self.tok_emb(in_idx)
-        pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
-        x = tok_embeds + pos_embeds  # Shape [batch_size, num_tokens, emb_size]
+        if self.positional_encoding == "learned":
+            positions = torch.arange(seq_len, device=in_idx.device)
+            x = tok_embeds + self.pos_emb(positions)
+        else:
+            x = tok_embeds
         x = self.drop_emb(x)
         x = self.trf_blocks(x)
         x = self.final_norm(x)
@@ -67,14 +87,17 @@ class LoopedGPTModel(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
+        self.context_length = cfg["context_length"]
+        self.positional_encoding = _positional_encoding(cfg)
         self.tok_emb = nn.Embedding(
             cfg["vocab_size"],
             cfg["emb_dim"],
         )
-        self.pos_emb = nn.Embedding(
-            cfg["context_length"],
-            cfg["emb_dim"],
-        )
+        if self.positional_encoding == "learned":
+            self.pos_emb = nn.Embedding(
+                cfg["context_length"],
+                cfg["emb_dim"],
+            )
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
 
         self.trf_blocks = nn.ModuleList([
@@ -94,12 +117,10 @@ class LoopedGPTModel(nn.Module):
     def forward(self, in_idx, num_loops=None):
         _, seq_len = in_idx.shape
 
-        positions = torch.arange(
-            seq_len,
-            device=in_idx.device,
-        )
-
-        x = self.tok_emb(in_idx) + self.pos_emb(positions)
+        x = self.tok_emb(in_idx)
+        if self.positional_encoding == "learned":
+            positions = torch.arange(seq_len, device=in_idx.device)
+            x = x + self.pos_emb(positions)
         x = self.drop_emb(x)
 
         loops = self.num_loops if num_loops is None else num_loops

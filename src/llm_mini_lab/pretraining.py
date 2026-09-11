@@ -31,7 +31,8 @@ GPT_CONFIG_124M = {
     "n_heads": 12,            # attention heads
     "n_layers": 12,           # transformer blocks
     "drop_rate": 0.0,         # no dropout during pretraining
-    "qkv_bias": False         # no bias in Q/K/V (book config)
+    "qkv_bias": False,        # no bias in Q/K/V (book config)
+    "positional_encoding": "learned",  # use "rope" for Rotary Position Embeddings
 }
 
 GPT_CONFIG_50M = {
@@ -42,6 +43,7 @@ GPT_CONFIG_50M = {
     "n_layers": 7,
     "drop_rate": 0.0,
     "qkv_bias": False,
+    "positional_encoding": "learned",
 }
 
 LOOPED_GPT_CONFIG = {
@@ -56,6 +58,7 @@ LOOPED_GPT_CONFIG = {
 
     "drop_rate": 0.0,
     "qkv_bias": False,
+    "positional_encoding": "learned",
     "ff_activation": "swiglu",
     "ff_hidden_dim": 1376,
 }
@@ -269,7 +272,7 @@ def save_training_checkpoint(update_step, microbatch_idx, tokens_seen,
 
 def generate_and_print_sample(model, tokenizer, device, start_context):
     model.eval()
-    context_size = model.pos_emb.weight.shape[0]
+    context_size = model.context_length
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
     with torch.no_grad():
         token_ids = generate_text_simple(

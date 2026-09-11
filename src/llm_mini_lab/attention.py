@@ -99,13 +99,30 @@ class LayerNorm(nn.Module):
 
 class MultiHeadAttention(nn.Module):
 
-    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads,
+                 qkv_bias=False, use_rope=False, rope_base=10_000):
         super().__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
         self.d_out = d_out
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads
+        self.use_rope = use_rope
+
+        if use_rope:
+            if self.head_dim % 2 != 0:
+                raise ValueError("RoPE requiere que la dimensión de cada cabeza sea par")
+
+            inv_freq = 1.0 / (
+                rope_base ** (
+                    torch.arange(0, self.head_dim, 2, dtype=torch.float32)
+                    / self.head_dim
+                )
+            )
+            positions = torch.arange(context_length, dtype=torch.float32)
+            angles = torch.outer(positions, inv_freq)
+            self.register_buffer("rope_cos", angles.cos(), persistent=False)
+            self.register_buffer("rope_sin", angles.sin(), persistent=False)
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -113,6 +130,17 @@ class MultiHeadAttention(nn.Module):
         self.out_proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
+
+    def _apply_rope(self, x):
+        """Rotate Q or K. x has shape [batch, heads, tokens, head_dim]."""
+        seq_len = x.size(-2)
+        cos = self.rope_cos[:seq_len].unsqueeze(0).unsqueeze(0)
+        sin = self.rope_sin[:seq_len].unsqueeze(0).unsqueeze(0)
+
+        even, odd = x[..., 0::2], x[..., 1::2]
+        return torch.stack(
+            (even * cos - odd * sin, even * sin + odd * cos), dim=-1
+        ).flatten(-2)
 
     def forward(self, x):
         b, num_tokens, d_in = x.shape
@@ -128,6 +156,10 @@ class MultiHeadAttention(nn.Module):
         keys = keys.transpose(1, 2)
         queries = queries.transpose(1, 2)
         values = values.transpose(1, 2)
+
+        if self.use_rope:
+            keys = self._apply_rope(keys)
+            queries = self._apply_rope(queries)
 
         # QK^T and softmax are the numerically sensitive operations in FP16.
         # Compute them in FP32, then return to the AMP dtype for the output layer.
