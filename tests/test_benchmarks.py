@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from llm_mini_lab.benchmarks import (
+from llm_mini_lab.evaluation.suite import (
     adapt_arc_easy,
     adapt_piqa,
     adapt_winogrande,

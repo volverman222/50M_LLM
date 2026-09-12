@@ -1,6 +1,9 @@
 import torch
 
-from llm_mini_lab.hellaswag import evaluate_hellaswag, render_hellaswag_example
+from llm_mini_lab.evaluation.hellaswag import (
+    evaluate_hellaswag,
+    render_hellaswag_example,
+)
 
 
 class CharacterTokenizer:

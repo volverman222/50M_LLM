@@ -1,0 +1,24 @@
+id,nombre,estado,val_loss,seed,wandb,device,no_amp,resume,dry_run,val_mod,run_name,grad_clip,log_every,eval_every,save_every,num_workers,eval_batches,min_lr_ratio,warmup_ratio,weight_decay,learning_rate,target_tokens,wandb_project,checkpoint_dir,context_length,shuffle_buffer,benchmark_every,micro_batch_size,gradient_accumulation,benchmark_max_examples,hf_repo,hourly_cost,smollm_config,hf_upload_every,emb_dim,n_heads,qkv_bias,drop_rate,num_loops,batch_size,vocab_size,max_updates,ff_activation,ff_hidden_dim,tokenizer_name,n_unique_layers,positional_encoding
+d9zk8yid,earnest-waterfall-3,finished,7.407116842269898,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+q7cmkaam,gpt2-50M-v4,finished,7.407116842269898,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+y11sazro,gpt2-50M-v4.1,finished,7.407116842269898,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+hz7reege,gpt2-50M-v4.2_lr_sch,crashed,7.604815244674683,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+gzqeqzwb,gpt2-50M-v4.3.2_Xavier,finished,6.602804517745971,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+6kr2lnd4,gpt2-50M-v4.3.3_SwiGLU,finished,6.51193642616272,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+o80s3ood,gpt2-50M-v4.4_More_depht,finished,6.65939416885376,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+z6k13o63,gpt2-50M-v4.5_Looped_Trf,finished,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+tbp5i6gx,gpt2-50M-v4.5_Looped_Trf,crashed,6.497307205200196,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+vgqcyyry,gpt2-50M-v4.6_batch_vram,finished,6.765285968780518,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+6xhht71p,gpt2-50M-v4.6_batch_vram_32,finished,7.254946184158325,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+qdddx721,gpt2-50M-v4.6_batch_vram_32,finished,5.052640199661255,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+epokuzlq,looped-gpt-50m-fineweb-1b,crashed,4.08661013841629,123.0,True,auto,False,,False,100.0,looped-gpt-50m-fineweb-1b,1.0,10.0,500.0,1000.0,0.0,20.0,0.1,0.05,0.1,0.0003,1000000000.0,gpt2-50M,checkpoints/pretrain-1b,256.0,10000.0,0.0,16.0,4.0,100.0,,,,,,,,,,,,,,,,,
+y7xtpl48,looped-gpt-50m-smollm-1b,finished,2.8292680382728577,123.0,True,cuda,False,checkpoints/pretrain-smollm-1b/latest.pt,False,100.0,looped-gpt-50m-smollm-1b,1.0,10.0,500.0,1000.0,0.0,20.0,0.1,0.05,0.1,0.0003,1000000000.0,gpt2-50M,checkpoints/pretrain-smollm-1b,256.0,10000.0,2000.0,16.0,4.0,100.0,volverman/mi-llm-50m-checkpoints,0.75,cosmopedia-v2,5000.0,,,,,,,,,,,,,
+p2cii5sx,gpt2-50M-v4.7-RoPE,finished,5.881263399124146,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+brk55263,gpt2-50M-v4.7-rope-batch_16 ,finished,6.448246622085572,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+kvl9gj01,gpt2-50M-v4.7-learned-batch_2 ,finished,6.458524370193482,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+j5lsmdfg,v4.8-rope-sp16384,finished,4.879293966293335,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,512.0,8.0,False,0.0,2.0,2.0,16384.0,3906.0,swiglu,1376.0,sp16384,3.0,rope
+wikie44b,v4.8-rope-gpt_2_tok_gpt,finished,4.905102872848511,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,512.0,8.0,False,0.0,2.0,2.0,50257.0,3906.0,swiglu,1376.0,gpt2,3.0,rope
+3sd82pzg,v4.8-rope-gpt_2_sp16_more_depth,finished,5.203575372695923,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,512.0,8.0,False,0.0,2.0,2.0,16384.0,3906.0,swiglu,1376.0,sp16384,13.0,rope
+uv82asb7,v4.8-rope-gpt_2_sp_more_embd_dim,finished,4.527131605148315,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,1024.0,8.0,False,0.0,2.0,2.0,16384.0,3906.0,swiglu,1376.0,sp16384,3.0,rope
+9389i5tj,v5-Muon,finished,,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,1024.0,8.0,False,0.0,2.0,2.0,16384.0,3906.0,swiglu,1376.0,sp16384,3.0,rope
+3spmfczc,v5-Muon,crashed,5.460129356384277,,,,,,,,,,,,,,,,,,0.0003,,,,128.0,,,,,,,,,,1024.0,8.0,False,0.0,2.0,2.0,16384.0,3906.0,swiglu,1376.0,sp16384,3.0,rope

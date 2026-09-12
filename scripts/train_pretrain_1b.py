@@ -21,22 +21,23 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import tiktoken
 import torch
 import torch.nn.functional as F
 
-from llm_mini_lab.benchmarks import evaluate_benchmark_suite
-from llm_mini_lab.model import LoopedGPTModel
-from llm_mini_lab.pretraining import (
+from llm_mini_lab.evaluation import evaluate_benchmark_suite
+from llm_mini_lab.models import LoopedGPTModel
+from llm_mini_lab.training import (
     LOOPED_GPT_CONFIG,
     cosine_lr_multiplier,
     create_dataloader_fineweb,
     create_dataloader_smollm,
     generate_text_simple,
     init_xavier,
+    load_tokenizer,
     make_fixed_eval_loaders,
     text_to_token_ids,
     token_ids_to_text,
+    tokenizer_vocab_size,
 )
 
 
@@ -48,6 +49,14 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
     )
     parser.add_argument("--target-tokens", type=int, default=1_000_000_000)
     parser.add_argument("--context-length", type=int, default=256)
+    parser.add_argument(
+        "--tokenizer", choices=("gpt2", "sp16384"), default="gpt2",
+        help="Tokenizador: GPT-2 (por defecto) o SentencePiece de 16.384 tokens.",
+    )
+    parser.add_argument(
+        "--tokenizer-model", type=Path, default=None,
+        help="Ruta a fineweb_16384_bpe.model; obligatoria con --tokenizer sp16384.",
+    )
     # Conservador para una GPU de 24 GB; el batch efectivo sigue siendo 64.
     parser.add_argument("--micro-batch-size", type=int, default=16)
     parser.add_argument("--gradient-accumulation", type=int, default=4)
@@ -111,10 +120,13 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
         parser.error("--hourly-cost no puede ser negativo")
     if args.hf_upload_every < 0:
         parser.error("--hf-upload-every debe ser 0 o un entero positivo")
+    if args.tokenizer == "sp16384" and args.tokenizer_model is None:
+        parser.error("--tokenizer-model es obligatorio con --tokenizer sp16384")
     return args
 
 
-def create_stream_loaders(args: argparse.Namespace, dataset: str, seed: int):
+def create_stream_loaders(args: argparse.Namespace, dataset: str, seed: int,
+                          encoder: Any):
     common = {
         "batch_size": args.micro_batch_size,
         "max_length": args.context_length,
@@ -122,6 +134,7 @@ def create_stream_loaders(args: argparse.Namespace, dataset: str, seed: int):
         "seed": seed,
         "num_workers": args.num_workers,
         "shuffle_buffer": args.shuffle_buffer,
+        "encoder": encoder,
     }
     if dataset == "fineweb":
         return create_dataloader_fineweb(**common)
@@ -268,6 +281,7 @@ def evaluate(model: torch.nn.Module, loader: Any, max_batches: int,
 
 def main(dataset: str = "fineweb") -> None:
     args = parse_args(dataset)
+    tokenizer = load_tokenizer(args.tokenizer, args.tokenizer_model)
     device = choose_device(args.device)
     seed_everything(args.seed)
     if device.type == "cuda":
@@ -281,7 +295,12 @@ def main(dataset: str = "fineweb") -> None:
     if max_updates < 2:
         raise ValueError("La configuración debe producir al menos 2 updates")
 
-    cfg = {**LOOPED_GPT_CONFIG, "context_length": args.context_length}
+    cfg = {
+        **LOOPED_GPT_CONFIG,
+        "context_length": args.context_length,
+        "vocab_size": tokenizer_vocab_size(tokenizer),
+        "tokenizer_name": args.tokenizer,
+    }
     model = LoopedGPTModel(cfg)
     model.apply(init_xavier)
     model.out_head.weight = model.tok_emb.weight
@@ -320,6 +339,7 @@ def main(dataset: str = "fineweb") -> None:
         previous_cost_usd = float(checkpoint.get("estimated_cost_usd", 0.0))
 
     print(f"Dispositivo: {device} | AMP: {amp_enabled} ({amp_dtype})")
+    print(f"Tokenizador: {args.tokenizer} | vocabulario: {cfg['vocab_size']:,}")
     print(f"Parámetros: {parameter_count:,}")
     print(f"Batch efectivo: {args.micro_batch_size * args.gradient_accumulation} "
           f"secuencias = {tokens_per_update:,} tokens/update")
@@ -334,7 +354,7 @@ def main(dataset: str = "fineweb") -> None:
     # Los loaders de evaluación se materializan una vez para que comparar
     # checkpoints no cambie el estado del stream de entrenamiento.
     train_loader, val_loader = create_stream_loaders(
-        args, dataset, args.seed + stream_epoch,
+        args, dataset, args.seed + stream_epoch, tokenizer,
     )
     _, fixed_val_loader = make_fixed_eval_loaders(
         train_loader, val_loader, max_train_batches=1,
@@ -354,7 +374,6 @@ def main(dataset: str = "fineweb") -> None:
         wandb.define_metric("*", step_metric="update")
 
     benchmark_names = ("hellaswag", "arc_easy", "piqa", "winogrande")
-    tokenizer = tiktoken.get_encoding("gpt2")
     started = time.perf_counter()
     initial_tokens_seen = tokens_seen
     model.train()
@@ -460,7 +479,7 @@ def main(dataset: str = "fineweb") -> None:
             if update < max_updates and tokens_seen < args.target_tokens:
                 # Nueva permutación si se agotase el stream antes del objetivo.
                 train_loader, _ = create_stream_loaders(
-                    args, dataset, args.seed + stream_epoch,
+                    args, dataset, args.seed + stream_epoch, tokenizer,
                 )
     finally:
         session_elapsed = time.perf_counter() - started

@@ -6,8 +6,9 @@ parameters.
 
 ## Included
 
-- `src/llm_mini_lab/`: GPT implementation, causal attention, and reusable
-  training/data-loading utilities.
+- `src/llm_mini_lab/models/`: GPT implementation and causal-attention layers.
+- `src/llm_mini_lab/training/`: reusable data-loading and pretraining utilities.
+- `src/llm_mini_lab/evaluation/`: zero-shot benchmark evaluation.
 - `notebooks/pretraining/full/`: dataset extraction, W&B data logging, and two
   external-CUDA full-pretraining notebooks.
 - `data/instruction_data.json`: small companion training data from the source
@@ -29,14 +30,29 @@ pip install -e ".[training]"
 
 Use `notebooks/Test_pretrain.ipynb` for a short smoke test of the 50M model.
 
+The streaming script accepts GPT-2 by default. To train with the Parameter
+Golf SentencePiece vocabulary instead, download `fineweb_16384_bpe.model` from
+[Natooka/parameter-golf-sp-tokenizers](https://huggingface.co/datasets/Natooka/parameter-golf-sp-tokenizers)
+and run:
+
+```bash
+python scripts/train_pretrain_1b.py \
+  --tokenizer sp16384 \
+  --tokenizer-model /path/to/fineweb_16384_bpe.model
+```
+
+The model's embedding and output vocabulary size are selected automatically
+(50,257 for `gpt2`; 16,384 for `sp16384`). Checkpoints from one tokenizer
+cannot be resumed with the other.
+
 ## Benchmarks during training
 
-`llm_mini_lab.benchmarks` evaluates HellaSwag, ARC-Easy, PIQA, and WinoGrande
+`llm_mini_lab.evaluation` evaluates HellaSwag, ARC-Easy, PIQA, and WinoGrande
 as zero-shot multiple-choice tasks. Install the optional dependency with
 `pip install -e ".[benchmarks]"`, then call:
 
 ```python
-from llm_mini_lab.benchmarks import evaluate_benchmark_suite
+from llm_mini_lab.evaluation import evaluate_benchmark_suite
 
 metrics = evaluate_benchmark_suite(
     model, tokenizer, device, max_examples=25, context_length=256
@@ -52,6 +68,6 @@ four tasks.
 
 The inherited `GPT_CONFIG_124M` configuration is approximately 124M parameters
 when token embedding/output weights are tied. It **exceeds the 50M parameter
-limit**. Reduce the configuration in `src/llm_mini_lab/pretraining.py` (and
+limit**. Reduce the configuration in `src/llm_mini_lab/training/core.py` (and
 the matching notebook config) before training the submitted model, then verify
 the printed parameter count.
