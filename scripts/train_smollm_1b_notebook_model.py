@@ -17,11 +17,13 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from llm_mini_lab.models import LoopedGPTModel
+from llm_mini_lab.evaluation import evaluate_benchmark_suite
 from llm_mini_lab.training import (
     LOOPED_GPT_CONFIG,
     cosine_lr_multiplier,
@@ -54,6 +56,10 @@ TOKENIZER_NAME = "sp16384"
 TOKENIZER_MODEL = PROJECT_ROOT / "tokenizers" / "fineweb_16384_bpe.model"
 EVAL_EVERY = 500
 EVAL_BATCHES = 20
+BENCHMARK_NAMES = ("hellaswag", "arc_easy", "piqa", "winogrande")
+BENCHMARK_MAX_EXAMPLES = 100
+WANDB_PROJECT = "gpt2-50M"
+WANDB_RUN_NAME = "smollm-1b-looped-gpt-1024-sp16384"
 CHECKPOINT_PATH = PROJECT_ROOT / "checkpoints" / "smollm-1b-notebook-model.pt"
 
 
@@ -112,6 +118,18 @@ def main() -> None:
         "vocab_size": tokenizer_vocab_size(tokenizer),
         "tokenizer_name": TOKENIZER_NAME,
     }
+    wandb.init(project=WANDB_PROJECT, name=WANDB_RUN_NAME,
+               config={
+                   "model": config,
+                   "target_tokens": TARGET_TOKENS,
+                   "micro_batch_size": MICRO_BATCH_SIZE,
+                   "gradient_accumulation": GRADIENT_ACCUMULATION,
+                   "learning_rate": LEARNING_RATE,
+                   "weight_decay": WEIGHT_DECAY,
+                   "smollm_config": SMOLLM_CONFIG,
+               })
+    wandb.define_metric("update")
+    wandb.define_metric("*", step_metric="update")
     model = LoopedGPTModel(config)
 
     model.apply(init_xavier)
@@ -190,8 +208,39 @@ def main() -> None:
                 print(f"{update:,}/{max_updates:,} | {tokens_seen:,} tokens | "
                       f"loss {(loss * GRADIENT_ACCUMULATION).item():.4f} | "
                       f"{tokens_seen / elapsed:,.0f} tok/s")
+            wandb.log({
+                "update": update,
+                "tokens_seen": tokens_seen,
+                "train/loss": (loss * GRADIENT_ACCUMULATION).item(),
+                "train/lr": optimizer.param_groups[0]["lr"],
+            })
             if update % EVAL_EVERY == 0:
-                print(f"Validación: {evaluate(model, fixed_validation_loader, device, amp_enabled, amp_dtype):.4f}")
+                validation_loss = evaluate(
+                    model, fixed_validation_loader, device, amp_enabled, amp_dtype,
+                )
+                print(f"Validación: {validation_loss:.4f}")
+                wandb.log({"update": update, "validation/loss": validation_loss})
+
+                results = evaluate_benchmark_suite(
+                    model=model,
+                    tokenizer=tokenizer,
+                    device=device,
+                    names=BENCHMARK_NAMES,
+                    max_examples=BENCHMARK_MAX_EXAMPLES,
+                    context_length=CONTEXT_LENGTH,
+                    autocast_dtype=amp_dtype if amp_enabled else None,
+                )
+                benchmark_log = {"update": update}
+                for name, metrics in results.items():
+                    benchmark_log.update({
+                        f"benchmark/{name}_accuracy": metrics["accuracy"],
+                        f"benchmark/{name}_correct": metrics["correct"],
+                        f"benchmark/{name}_total": metrics["total"],
+                        f"benchmark/{name}_correct_loss": metrics[
+                            "mean_correct_completion_loss"
+                        ],
+                    })
+                wandb.log(benchmark_log)
             if update == max_updates or tokens_seen >= TARGET_TOKENS:
                 break
         if update == max_updates or tokens_seen >= TARGET_TOKENS:
@@ -203,6 +252,7 @@ def main() -> None:
                                   context_size=CONTEXT_LENGTH)
     print("Muestra:", token_ids_to_text(sample.cpu(), tokenizer))
     print(f"Checkpoint: {CHECKPOINT_PATH}")
+    wandb.finish()
 
 
 if __name__ == "__main__":
