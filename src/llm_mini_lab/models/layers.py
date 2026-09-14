@@ -144,6 +144,27 @@ class MultiHeadAttention(nn.Module):
             (even * cos - odd * sin, even * sin + odd * cos), dim=-1
         ).flatten(-2)
 
+    def forward_reference(self, x):
+        """The previous implementation (explicit fp32 scores, mask, softmax). Kept ONLY for equivalence tests
+        and the before/after benchmark (scripts/bench_attention.py); not used in training."""
+        b, num_tokens, d_in = x.shape
+        keys = self.W_key(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        queries = self.W_query(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        values = self.W_value(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        if self.use_rope:
+            keys = self._apply_rope(keys)
+            queries = self._apply_rope(queries)
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            attn_scores = queries.float() @ keys.float().transpose(2, 3)
+            mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+            attn_scores.masked_fill_(mask_bool, -torch.inf)
+            attn_weights = torch.softmax(attn_scores / keys.shape[-1] ** 0.5, dim=-1)
+            attn_weights = self.dropout(attn_weights)
+            context_vec = attn_weights @ values.float()
+        context_vec = context_vec.to(dtype=x.dtype).transpose(1, 2)
+        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+        return self.out_proj(context_vec)
+
     def forward(self, x):
         b, num_tokens, d_in = x.shape
 
@@ -163,16 +184,13 @@ class MultiHeadAttention(nn.Module):
             keys = self._apply_rope(keys)
             queries = self._apply_rope(queries)
 
-        # QK^T and softmax are the numerically sensitive operations in FP16.
-        # Compute them in FP32, then return to the AMP dtype for the output layer.
-        with torch.autocast(device_type=x.device.type, enabled=False):
-            attn_scores = queries.float() @ keys.float().transpose(2, 3)
-            mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
-            attn_scores.masked_fill_(mask_bool, -torch.inf)
-            attn_weights = torch.softmax(
-                attn_scores / keys.shape[-1] ** 0.5, dim=-1)
-            attn_weights = self.dropout(attn_weights)
-            context_vec = attn_weights @ values.float()
+        # Fused causal attention (flash / memory-efficient kernels): never materializes the T×T score matrix,
+        # softmax is accumulated in fp32 inside the kernel, same 1/sqrt(head_dim) scale and causal mask as before.
+        context_vec = torch.nn.functional.scaled_dot_product_attention(
+            queries, keys, values,
+            dropout_p=self.dropout.p if self.training else 0.0,
+            is_causal=True,
+        )
 
         context_vec = context_vec.to(dtype=x.dtype).transpose(1, 2)
         context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
