@@ -77,6 +77,9 @@ GPT_CONFIG_50M = {
     "context_length": 256,
     "emb_dim": 512,
     "n_heads": 8,
+    # Set a divisor of n_heads (for example, 2) to enable Grouped Query Attention.
+    # Omit it, or set it to n_heads, to use standard multi-head attention.
+    "n_kv_heads": 2,
     "n_layers": 7,
     "drop_rate": 0.0,
     "qkv_bias": False,

@@ -27,7 +27,8 @@ class TransformerBlock(nn.Module):
             dropout=cfg["drop_rate"],
             qkv_bias=cfg["qkv_bias"],
             use_rope=positional_encoding == "rope",
-            rope_base=cfg.get("rope_base", 10_000))
+            rope_base=cfg.get("rope_base", 10_000),
+            num_kv_heads=cfg.get("n_kv_heads"))
         self.ff = FeedForward(cfg)
         self.norm1 = LayerNorm(cfg["emb_dim"])
         self.norm2 = LayerNorm(cfg["emb_dim"])
