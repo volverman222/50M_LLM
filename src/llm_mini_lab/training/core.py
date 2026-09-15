@@ -74,7 +74,8 @@ GPT_CONFIG_124M = {
 }
 
 GPT_CONFIG_50M = {
-    "vocab_size": 50257,
+    "vocab_size": 16384,
+    "tokenizer_name": "sp16384",
     "context_length": 256,
     "emb_dim": 512,
     "n_heads": 8,
@@ -84,7 +85,7 @@ GPT_CONFIG_50M = {
     "n_layers": 7,
     "drop_rate": 0.0,
     "qkv_bias": False,
-    "positional_encoding": "learned",
+    "positional_encoding": "rope",
     "tie_embeddings": True,
 }
 
