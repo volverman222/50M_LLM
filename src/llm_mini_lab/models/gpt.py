@@ -27,7 +27,8 @@ class TransformerBlock(nn.Module):
             dropout=cfg["drop_rate"],
             qkv_bias=cfg["qkv_bias"],
             use_rope=positional_encoding == "rope",
-            rope_base=cfg.get("rope_base", 10_000))
+            rope_base=cfg.get("rope_base", 10_000),
+            num_kv_heads=cfg.get("n_kv_heads"))
         self.ff = FeedForward(cfg)
         self.norm1 = LayerNorm(cfg["emb_dim"])
         self.norm2 = LayerNorm(cfg["emb_dim"])
@@ -68,6 +69,8 @@ class GPTModel(nn.Module):
         self.out_head = nn.Linear(
             cfg["emb_dim"], cfg["vocab_size"], bias=False
         )
+        if cfg.get("tie_embeddings", False):
+            self.out_head.weight = self.tok_emb.weight
 
     def forward(self, in_idx):
         batch_size, seq_len = in_idx.shape
@@ -113,6 +116,8 @@ class LoopedGPTModel(nn.Module):
             cfg["vocab_size"],
             bias=False,
         )
+        if cfg.get("tie_embeddings", False):
+            self.out_head.weight = self.tok_emb.weight
 
     def forward(self, in_idx, num_loops=None):
         _, seq_len = in_idx.shape

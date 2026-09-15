@@ -58,7 +58,7 @@ def bench(config, impl, micro_batch, context, steps, warm, device):
                  peak_alloc_gb=torch.cuda.max_memory_allocated() / 1e9 if device == "cuda" else None,
                  peak_reserved_gb=torch.cuda.max_memory_reserved() / 1e9 if device == "cuda" else None,
                  device=torch.cuda.get_device_name(0) if device == "cuda" else "cpu")
-        del m, opt; 
+        del m, opt
         if device == "cuda": torch.cuda.empty_cache()
         return r
     finally:

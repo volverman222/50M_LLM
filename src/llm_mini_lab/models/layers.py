@@ -2,6 +2,7 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class GELU(nn.Module):
@@ -102,13 +103,23 @@ class LayerNorm(nn.Module):
 class MultiHeadAttention(nn.Module):
 
     def __init__(self, d_in, d_out, context_length, dropout, num_heads,
-                 qkv_bias=False, use_rope=False, rope_base=10_000):
+                 qkv_bias=False, use_rope=False, rope_base=10_000,
+                 num_kv_heads=None):
         super().__init__()
         assert d_out % num_heads == 0, "d_out must be divisible by num_heads"
 
         self.d_out = d_out
         self.num_heads = num_heads
+        # GQA: several query heads may share one key/value head.  Keeping this
+        # equal to ``num_heads`` recovers standard multi-head attention.
+        self.num_kv_heads = num_heads if num_kv_heads is None else num_kv_heads
+        if self.num_kv_heads <= 0 or num_heads % self.num_kv_heads != 0:
+            raise ValueError(
+                "num_kv_heads must be positive and divide num_heads exactly"
+            )
         self.head_dim = d_out // num_heads
+        self.kv_dim = self.num_kv_heads * self.head_dim
+        self.kv_group_size = num_heads // self.num_kv_heads
         self.use_rope = use_rope
 
         if use_rope:
@@ -127,8 +138,8 @@ class MultiHeadAttention(nn.Module):
             self.register_buffer("rope_sin", angles.sin(), persistent=False)
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, self.kv_dim, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, self.kv_dim, bias=qkv_bias)
         self.out_proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
         self.register_buffer("mask", torch.triu(torch.ones(context_length, context_length), diagonal=1))
@@ -148,12 +159,15 @@ class MultiHeadAttention(nn.Module):
         """The previous implementation (explicit fp32 scores, mask, softmax). Kept ONLY for equivalence tests
         and the before/after benchmark (scripts/bench_attention.py); not used in training."""
         b, num_tokens, d_in = x.shape
-        keys = self.W_key(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = self.W_key(x).view(b, num_tokens, self.num_kv_heads, self.head_dim).transpose(1, 2)
         queries = self.W_query(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
-        values = self.W_value(x).view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+        values = self.W_value(x).view(b, num_tokens, self.num_kv_heads, self.head_dim).transpose(1, 2)
         if self.use_rope:
             keys = self._apply_rope(keys)
             queries = self._apply_rope(queries)
+        if self.kv_group_size > 1:
+            keys = keys.repeat_interleave(self.kv_group_size, dim=1)
+            values = values.repeat_interleave(self.kv_group_size, dim=1)
         with torch.autocast(device_type=x.device.type, enabled=False):
             attn_scores = queries.float() @ keys.float().transpose(2, 3)
             mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
@@ -172,8 +186,8 @@ class MultiHeadAttention(nn.Module):
         queries = self.W_query(x)
         values = self.W_value(x)
 
-        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
-        values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        keys = keys.view(b, num_tokens, self.num_kv_heads, self.head_dim)
+        values = values.view(b, num_tokens, self.num_kv_heads, self.head_dim)
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
 
         keys = keys.transpose(1, 2)
@@ -184,16 +198,27 @@ class MultiHeadAttention(nn.Module):
             keys = self._apply_rope(keys)
             queries = self._apply_rope(queries)
 
-        # Fused causal attention (flash / memory-efficient kernels): never materializes the T×T score matrix,
-        # softmax is accumulated in fp32 inside the kernel, same 1/sqrt(head_dim) scale and causal mask as before.
-        context_vec = torch.nn.functional.scaled_dot_product_attention(
-            queries, keys, values,
+        use_native_gqa = self.num_kv_heads != self.num_heads
+        if use_native_gqa and x.device.type != "cuda":
+            # Native fused GQA is a CUDA feature. Expanding K/V preserves the
+            # same semantics on CPU and MPS while still using SDPA there.
+            keys = keys.repeat_interleave(self.kv_group_size, dim=1)
+            values = values.repeat_interleave(self.kv_group_size, dim=1)
+            use_native_gqa = False
+
+        # SDPA selects Flash Attention, cuDNN attention, or another optimized
+        # backend when the device, dtype, and tensor shapes support it.
+        context_vec = F.scaled_dot_product_attention(
+            queries,
+            keys,
+            values,
             dropout_p=self.dropout.p if self.training else 0.0,
             is_causal=True,
+            enable_gqa=use_native_gqa,
         )
 
-        context_vec = context_vec.to(dtype=x.dtype).transpose(1, 2)
-        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+        context_vec = context_vec.transpose(1, 2).contiguous()
+        context_vec = context_vec.view(b, num_tokens, self.d_out)
         context_vec = self.out_proj(context_vec)
 
         return context_vec

@@ -70,17 +70,23 @@ GPT_CONFIG_124M = {
     "drop_rate": 0.0,         # no dropout during pretraining
     "qkv_bias": False,        # no bias in Q/K/V (book config)
     "positional_encoding": "learned",  # use "rope" for Rotary Position Embeddings
+    "tie_embeddings": True,
 }
 
 GPT_CONFIG_50M = {
-    "vocab_size": 50257,
+    "vocab_size": 16384,
+    "tokenizer_name": "sp16384",
     "context_length": 256,
     "emb_dim": 512,
     "n_heads": 8,
+    # Set a divisor of n_heads (for example, 2) to enable Grouped Query Attention.
+    # Omit it, or set it to n_heads, to use standard multi-head attention.
+    "n_kv_heads": 2,
     "n_layers": 7,
     "drop_rate": 0.0,
     "qkv_bias": False,
-    "positional_encoding": "learned",
+    "positional_encoding": "rope",
+    "tie_embeddings": True,
 }
 
 LOOPED_GPT_CONFIG = {
@@ -98,6 +104,7 @@ LOOPED_GPT_CONFIG = {
     "positional_encoding": "learned",
     "ff_activation": "swiglu",
     "ff_hidden_dim": 1376,
+    "tie_embeddings": True,
 }
 # ---------------------------------------------------------------------------
 # Text helpers
