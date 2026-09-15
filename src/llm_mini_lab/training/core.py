@@ -70,6 +70,7 @@ GPT_CONFIG_124M = {
     "drop_rate": 0.0,         # no dropout during pretraining
     "qkv_bias": False,        # no bias in Q/K/V (book config)
     "positional_encoding": "learned",  # use "rope" for Rotary Position Embeddings
+    "tie_embeddings": True,
 }
 
 GPT_CONFIG_50M = {
@@ -84,6 +85,7 @@ GPT_CONFIG_50M = {
     "drop_rate": 0.0,
     "qkv_bias": False,
     "positional_encoding": "learned",
+    "tie_embeddings": True,
 }
 
 LOOPED_GPT_CONFIG = {
@@ -101,6 +103,7 @@ LOOPED_GPT_CONFIG = {
     "positional_encoding": "learned",
     "ff_activation": "swiglu",
     "ff_hidden_dim": 1376,
+    "tie_embeddings": True,
 }
 # ---------------------------------------------------------------------------
 # Text helpers

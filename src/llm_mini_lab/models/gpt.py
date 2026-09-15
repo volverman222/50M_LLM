@@ -69,6 +69,8 @@ class GPTModel(nn.Module):
         self.out_head = nn.Linear(
             cfg["emb_dim"], cfg["vocab_size"], bias=False
         )
+        if cfg.get("tie_embeddings", False):
+            self.out_head.weight = self.tok_emb.weight
 
     def forward(self, in_idx):
         batch_size, seq_len = in_idx.shape
@@ -114,6 +116,8 @@ class LoopedGPTModel(nn.Module):
             cfg["vocab_size"],
             bias=False,
         )
+        if cfg.get("tie_embeddings", False):
+            self.out_head.weight = self.tok_emb.weight
 
     def forward(self, in_idx, num_loops=None):
         _, seq_len = in_idx.shape
