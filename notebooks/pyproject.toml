@@ -12,6 +12,7 @@ dependencies = [
     "numpy",
     "tiktoken",
     "torch>=2.6",
+    "wandb",
 ]
 
 [project.optional-dependencies]
