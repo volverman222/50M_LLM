@@ -26,6 +26,11 @@ import torch.nn.functional as F
 
 from llm_mini_lab.evaluation import evaluate_benchmark_suite
 from llm_mini_lab.models import LoopedGPTModel
+from llm_mini_lab.telemetry_export import public_config, to_wandb_metrics
+from llm_mini_lab.telemetry import (
+    LoopTelemetryCollector, gradient_rms, parameter_rms,
+    parameter_update_rms, snapshot_parameters,
+)
 from llm_mini_lab.training import (
     LOOPED_GPT_CONFIG,
     cosine_lr_multiplier,
@@ -49,6 +54,13 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
     )
     parser.add_argument("--target-tokens", type=int, default=1_000_000_000)
     parser.add_argument("--context-length", type=int, default=256)
+    parser.add_argument("--emb-dim", type=int, default=None)
+    parser.add_argument("--n-heads", type=int, default=None)
+    parser.add_argument("--n-kv-heads", type=int, default=None)
+    parser.add_argument("--n-unique-layers", type=int, default=None)
+    parser.add_argument("--num-loops", type=int, default=None)
+    parser.add_argument("--positional-encoding", choices=("learned", "rope"), default=None)
+    parser.add_argument("--ff-hidden-dim", type=int, default=None)
     parser.add_argument(
         "--tokenizer", choices=("gpt2", "sp16384"), default="gpt2",
         help="Tokenizador: GPT-2 (por defecto) o SentencePiece de 16.384 tokens.",
@@ -97,6 +109,8 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--wandb-project", default="gpt2-50M")
     parser.add_argument("--run-name", default=f"looped-gpt-50m-{dataset}-1b")
+    parser.add_argument("--telemetry-jsonl", type=Path, default=None)
+    parser.add_argument("--telemetry-every", type=int, default=50)
     parser.add_argument(
         "--hourly-cost", type=float, default=None, metavar="USD",
         help="Coste del equipo en USD/hora; si se omite, se pregunta al iniciar.",
@@ -122,6 +136,12 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
         parser.error("--hf-upload-every debe ser 0 o un entero positivo")
     if args.tokenizer == "sp16384" and args.tokenizer_model is None:
         parser.error("--tokenizer-model es obligatorio con --tokenizer sp16384")
+    for name in ("emb_dim", "n_heads", "n_kv_heads", "n_unique_layers", "num_loops", "ff_hidden_dim"):
+        value = getattr(args, name)
+        if value is not None and value <= 0:
+            parser.error(f"--{name.replace(chr(95), chr(45))} debe ser mayor que 0")
+    if args.telemetry_every <= 0:
+        parser.error("--telemetry-every debe ser mayor que 0")
     return args
 
 
@@ -189,6 +209,28 @@ def atomic_save_json(payload: dict[str, Any], path: Path) -> None:
         encoding="utf-8",
     )
     os.replace(temporary, path)
+
+
+def append_jsonl(path: Path, records: list[dict[str, Any]]) -> None:
+    """Write interoperable JSON while retaining nonfinite-field diagnostics."""
+    def finite(value):
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        if isinstance(value, dict):
+            return {key: finite(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [finite(item) for item in value]
+        return value
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        for record in records:
+            clean = finite(record)
+            nonfinite = [key for key, value in record.items()
+                         if isinstance(value, float) and not math.isfinite(value)]
+            if nonfinite:
+                clean["nonfinite_fields"] = nonfinite
+            handle.write(json.dumps(clean, ensure_ascii=False, allow_nan=False) + "\n")
 
 
 def upload_checkpoint_to_hf(path: Path, repo_id: str, update: int) -> bool:
@@ -301,6 +343,13 @@ def main(dataset: str = "fineweb") -> None:
         "vocab_size": tokenizer_vocab_size(tokenizer),
         "tokenizer_name": args.tokenizer,
     }
+    overrides = {
+        "emb_dim": args.emb_dim, "n_heads": args.n_heads, "n_kv_heads": args.n_kv_heads,
+        "n_unique_layers": args.n_unique_layers, "num_loops": args.num_loops,
+        "positional_encoding": args.positional_encoding,
+        "ff_hidden_dim": args.ff_hidden_dim,
+    }
+    cfg.update({key: value for key, value in overrides.items() if value is not None})
     model = LoopedGPTModel(cfg)
     model.apply(init_xavier)
     model.out_head.weight = model.tok_emb.weight
@@ -350,6 +399,18 @@ def main(dataset: str = "fineweb") -> None:
 
     hourly_cost = get_hourly_cost(args.hourly_cost)
     print(f"Coste indicado: ${hourly_cost:.4f} USD/hora")
+    telemetry = None
+    if args.telemetry_jsonl:
+        args.telemetry_jsonl.parent.mkdir(parents=True, exist_ok=True)
+        with args.telemetry_jsonl.open("x", encoding="utf-8"):
+            pass  # Use a new evidence path on resume; never overwrite a log.
+        append_jsonl(args.telemetry_jsonl, [{
+            "kind": "config", "schema_version": 1, "dataset": dataset, "config": cfg, "args": {
+                key: str(value) if isinstance(value, Path) else value
+                for key, value in vars(args).items()
+            },
+            "parameter_count": parameter_count, "device": str(device),
+        }])
 
     # Los loaders de evaluación se materializan una vez para que comparar
     # checkpoints no cambie el estado del stream de entrenamiento.
@@ -369,7 +430,8 @@ def main(dataset: str = "fineweb") -> None:
         run = wandb.init(project=args.wandb_project, name=args.run_name,
                          id=resume_wandb_id,
                          resume="must" if resume_wandb_id else None,
-                         config=vars(args))
+                         config=public_config({"dataset": dataset, "config": cfg, "args": vars(args),
+                                               "parameter_count": parameter_count}))
         wandb.define_metric("update")
         wandb.define_metric("*", step_metric="update")
 
@@ -379,8 +441,12 @@ def main(dataset: str = "fineweb") -> None:
     model.train()
     optimizer.zero_grad(set_to_none=True)
     microbatches_accumulated = 0
+    update_started = time.perf_counter()
+    update_tokens_start = tokens_seen
+    capture_update = False
 
     try:
+        telemetry = LoopTelemetryCollector(model) if args.telemetry_jsonl else None
         while update < max_updates and tokens_seen < args.target_tokens:
             stream_epoch += 1
             produced_batch = False
@@ -388,12 +454,31 @@ def main(dataset: str = "fineweb") -> None:
                 produced_batch = True
                 inputs = inputs.to(device, non_blocking=True)
                 targets = targets.to(device, non_blocking=True)
+                if microbatches_accumulated == 0:
+                    update_started = time.perf_counter()
+                    update_tokens_start = tokens_seen
+                    capture_update = telemetry is not None and (
+                        update == 0 or (update + 1) % args.telemetry_every == 0
+                    )
+                    if capture_update and device.type == "cuda":
+                        torch.cuda.reset_peak_memory_stats(device)
+                will_end_update = (
+                    microbatches_accumulated + 1 == args.gradient_accumulation
+                    or tokens_seen + inputs.numel() >= args.target_tokens
+                )
+                capture_forward = capture_update and will_end_update
+                if capture_forward:
+                    telemetry.start_step()
                 amp = (torch.autocast("cuda", dtype=amp_dtype) if amp_enabled
                        else contextlib.nullcontext())
-                with amp:
-                    logits = model(inputs)
-                    loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
-                    scaled_loss = loss / args.gradient_accumulation
+                try:
+                    with amp:
+                        logits = model(inputs)
+                        loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
+                        scaled_loss = loss / args.gradient_accumulation
+                finally:
+                    if capture_forward:
+                        telemetry.stop_step()
                 if not torch.isfinite(loss):
                     raise FloatingPointError(f"Loss no finita en update {update + 1}")
                 scaler.scale(scaled_loss).backward()
@@ -407,6 +492,8 @@ def main(dataset: str = "fineweb") -> None:
                     continue
 
                 scaler.unscale_(optimizer)
+                grad_rms_value = gradient_rms(model) if capture_update else None
+                before_snapshot = snapshot_parameters(model) if capture_update else None
                 grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
                 scaler.step(optimizer)
                 scaler.update()
@@ -414,6 +501,31 @@ def main(dataset: str = "fineweb") -> None:
                 scheduler.step()
                 update += 1
                 microbatches_accumulated = 0
+                if capture_update:
+                    update_rms = parameter_update_rms(model, before_snapshot)
+                    param_rms_value = parameter_rms(model)
+                    update_elapsed = time.perf_counter() - update_started
+                    update_tokens = tokens_seen - update_tokens_start
+                    peak_alloc = (torch.cuda.max_memory_allocated(device) / 1e9
+                                  if device.type == "cuda" else None)
+                    peak_reserved = (torch.cuda.max_memory_reserved(device) / 1e9
+                                     if device.type == "cuda" else None)
+                    records = [{
+                        "kind": "update", "update": update, "tokens_seen": tokens_seen,
+                        "loss": loss.item(), "lr": optimizer.param_groups[0]["lr"],
+                        "grad_norm": float(grad_norm), "grad_rms": grad_rms_value,
+                        "clipped": float(grad_norm) > args.grad_clip,
+                        "parameter_rms": param_rms_value, "update_rms": update_rms,
+                        "update_to_parameter_rms": update_rms / max(param_rms_value, 1e-12),
+                        "step_ms": update_elapsed * 1000.0,
+                        "tokens_per_second": update_tokens / max(update_elapsed, 1e-9),
+                        "peak_allocated_gb": peak_alloc, "peak_reserved_gb": peak_reserved,
+                    }]
+                    records += [{"kind": "block", "update": update, **row}
+                                for row in telemetry.block_records()]
+                    records += [{"kind": "loop", "update": update, **row}
+                                for row in telemetry.loop_records()]
+                    append_jsonl(args.telemetry_jsonl, records)
 
                 metrics = {
                     "update": update, "tokens_seen": tokens_seen,
@@ -422,6 +534,8 @@ def main(dataset: str = "fineweb") -> None:
                     "train/grad_norm": float(grad_norm),
                 }
                 if wandb:
+                    if capture_update:
+                        metrics.update(to_wandb_metrics(records))
                     wandb.log(metrics)
                 if update % args.log_every == 0 or update == 1:
                     session_elapsed = time.perf_counter() - started
@@ -436,6 +550,11 @@ def main(dataset: str = "fineweb") -> None:
                     print(f"Validación @ {update:,}: loss {val_loss:.4f}")
                     if wandb:
                         wandb.log({"update": update, "validation/loss": val_loss})
+                    if args.telemetry_jsonl:
+                        append_jsonl(args.telemetry_jsonl, [{
+                            "kind": "validation", "update": update,
+                            "tokens_seen": tokens_seen, "loss": val_loss,
+                        }])
 
                 if args.benchmark_every and update % args.benchmark_every == 0:
                     results = evaluate_benchmark_suite(
@@ -513,6 +632,8 @@ def main(dataset: str = "fineweb") -> None:
                 "training/estimated_cost_usd": total_cost,
             })
             wandb.finish()
+        if telemetry:
+            telemetry.close()
 
     prompt = text_to_token_ids("Artificial intelligence", tokenizer).to(device)
     sample_ids = generate_text_simple(model, prompt, max_new_tokens=30,

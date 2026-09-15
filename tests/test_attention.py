@@ -54,6 +54,10 @@ def test_num_kv_heads_must_divide_query_heads():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is not available")
+@pytest.mark.skipif(
+    not torch.backends.cuda.is_flash_attention_available(),
+    reason="PyTorch was not built with the Flash Attention backend",
+)
 def test_gqa_runs_with_flash_attention_on_cuda():
     attention = MultiHeadAttention(
         d_in=64,
