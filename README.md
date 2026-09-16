@@ -22,3 +22,13 @@ Cada ejecución registra configuración, pérdidas y la métrica final
 Consulta `program.md` para el protocolo de experimentación autónoma.
 
 The autonomous search may modify `train.py` and the isolated `rsi_architecture/` candidate package while data, tokenizer, evaluation, and shared `src/llm_mini_lab/` code remain fixed.
+
+## System documentation
+
+The end-to-end authority model and operating procedures are documented in:
+
+- [`docs/adr/ADR-0001-governed-autoresearch-evidence-boundaries.md`](docs/adr/ADR-0001-governed-autoresearch-evidence-boundaries.md)
+- [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
+- [`docs/README.md`](docs/README.md)
+
+These documents distinguish candidate mutation, fixed measurement, W&B/ARIA advisory evidence, passive dynamic observation, visualization, and the separately reviewed local orchestration candidate.
