@@ -6,3 +6,5 @@ checkpoints/*
 Videos_propios/
 wandb/
 .DS_Store
+ 
+.autoresearch/
