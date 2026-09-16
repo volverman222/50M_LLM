@@ -255,3 +255,52 @@ class ReferenceCliTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(frame.run_id, "baseline")
         self.assertEqual(frame.probe_id, "probe-v1")
+
+
+class ObserverIsolationTests(unittest.TestCase):
+    def test_dynamic_probe_selection_does_not_advance_global_rng(self):
+        import train
+
+        class TinyDataset:
+            def __getitem__(self, index):
+                del index
+                return torch.tensor([1, 2, 3]), torch.tensor([2, 3, 4])
+
+        torch.manual_seed(12345)
+        before = torch.get_rng_state().clone()
+        probe = train._select_dynamic_probe_input(TinyDataset(), torch.device("cpu"))
+        after = torch.get_rng_state()
+        self.assertTrue(torch.equal(before, after))
+        self.assertEqual(tuple(probe.shape), (1, 3))
+
+    def test_observer_failure_is_advisory_and_does_not_raise(self):
+        import train
+
+        class FakeRun:
+            id = "run-test"
+            name = "run-test"
+            summary = {}
+
+        original = train.capture_observations
+        train.capture_observations = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("probe failed"))
+        try:
+            records = train._record_dynamic_observations(
+                model=ToyLoop(), probe_inputs=torch.ones(1, 2, 2), run=FakeRun(),
+                tokens_seen=100, update=10, probe_id="probe-v1", module_names=["step"],
+            )
+        finally:
+            train.capture_observations = original
+        self.assertEqual(records, [])
+        self.assertEqual(FakeRun.summary["dynamics/status"], "error")
+        self.assertEqual(FakeRun.summary["dynamics/error_type"], "RuntimeError")
+
+
+class ReferenceValidationTests(unittest.TestCase):
+    def test_reference_frame_requires_integer_checkpoint_tokens(self):
+        from dynamic_observatory.reference import DynamicReferenceFrame
+
+        with self.assertRaises(ValueError):
+            DynamicReferenceFrame(
+                run_id="r", checkpoint_tokens=1.5, probe_id="p", trace_name="t",
+                center=[0.0, 0.0], basis=[[1.0], [0.0]],
+            )

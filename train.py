@@ -70,6 +70,30 @@ def _dynamic_module_names() -> list[str] | None:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _select_dynamic_probe_input(test_dataset, device):
+    inputs, _targets = test_dataset[0]
+    return inputs.unsqueeze(0).to(device)
+
+
+def _record_dynamic_observations(*, model, probe_inputs, run, tokens_seen, update, probe_id, module_names):
+    try:
+        observations = capture_observations(
+            model, probe_inputs, run_id=str(run.id or run.name),
+            checkpoint_tokens=tokens_seen, probe_id=probe_id, module_names=module_names,
+        )
+        run.summary["dynamics/status"] = "ok"
+        run.summary["dynamics/observation_count"] = len(observations)
+        if observations:
+            out_dir = Path(__file__).resolve().parent / ".autoresearch" / "dynamics" / str(run.id or "run") / str(tokens_seen)
+            log_observations_to_wandb(run, observations, out_dir, update=update)
+        return observations
+    except Exception as exc:
+        run.summary["dynamics/status"] = "error"
+        run.summary["dynamics/error_type"] = type(exc).__name__
+        print(f"dynamics_observer_error={type(exc).__name__}: {exc}", file=sys.stderr)
+        return []
+
+
 def main():
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -93,7 +117,7 @@ def main():
     dynamics_enabled = _env_enabled(DYNAMICS_ENV)
     dynamics_probe_inputs = None
     if dynamics_enabled:
-        dynamics_probe_inputs = next(iter(test_loader))[0][:1].to(device)
+        dynamics_probe_inputs = _select_dynamic_probe_input(test_dataset, device)
 
     max_updates = MAX_TOKENS // (BATCH_SIZE * MAX_LENGTH)
     if max_updates < 1:
@@ -180,18 +204,11 @@ def main():
     run.summary["tokens_seen"] = tokens_seen
     run.summary["elapsed_seconds"] = elapsed
     if dynamics_enabled and dynamics_probe_inputs is not None:
-        observations = capture_observations(
-            model,
-            dynamics_probe_inputs,
-            run_id=str(run.id or run.name),
-            checkpoint_tokens=tokens_seen,
+        _record_dynamic_observations(
+            model=model, probe_inputs=dynamics_probe_inputs, run=run, tokens_seen=tokens_seen, update=update,
             probe_id=os.getenv("AUTORESEARCH_DYNAMICS_PROBE_ID", "validation-head-v1"),
             module_names=_dynamic_module_names(),
         )
-        run.summary["dynamics/observation_count"] = len(observations)
-        if observations:
-            out_dir = Path(__file__).resolve().parent / ".autoresearch" / "dynamics" / str(run.id or "run") / str(tokens_seen)
-            log_observations_to_wandb(run, observations, out_dir, update=update)
     run.finish()
     print(f"tokens_seen={tokens_seen} elapsed_seconds={elapsed:.1f}")
     print(f"test_loss={test_loss:.6f}")
