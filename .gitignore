@@ -7,3 +7,5 @@ results.tsv
 checkpoints/
 *.egg-info/
 .ipynb_checkpoints/
+
+.autoresearch/
