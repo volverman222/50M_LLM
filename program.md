@@ -105,3 +105,12 @@ d4e5f6g	0.000000	crash	batch size too large
 Prefer simple, reproducible changes. A tiny improvement that introduces a lot
 of complexity is not worth keeping. If an experiment changes memory use, note
 the risk in its description.
+
+## Fixed dynamic observation boundary
+
+`src/dynamic_observatory/` is fixed measurement apparatus, not part of the agent-editable candidate surface.
+It may passively capture reduced hidden-state trajectories and derive diagnostic metrics, but it must not
+change logits, gradients, optimizer state, the token budget, or `test_loss`. Dynamic observations are
+advisory evidence only and may not participate in keep/discard selection unless the research protocol is
+explicitly revised by the project owners. Research data sources are `LIVE`, `REPLAY`, `DERIVED`, or `N/A`;
+simulated substitute measurements are prohibited.

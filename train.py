@@ -4,6 +4,7 @@ La métrica que se informa al final es ``test_loss``: la pérdida media de
 entropía cruzada sobre ``data/smollm_local/validation.txt``. Menor es mejor.
 """
 
+import os
 from pathlib import Path
 import sys
 import time
@@ -17,6 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from rsi_architecture import build_model
+from dynamic_observatory import capture_observations
+from dynamic_observatory.wandb_io import log_observations_to_wandb
 from llm_mini_lab.training import (
     LOOPED_GPT_CONFIG,
     LocalTextDataset,
@@ -53,6 +56,19 @@ DATA_DIR = PROJECT_ROOT / "data" / "smollm_local"
 TRAIN_PATH = DATA_DIR / "train.txt"
 TEST_PATH = DATA_DIR / "validation.txt"
 
+DYNAMICS_ENV = "AUTORESEARCH_DYNAMICS"
+
+
+def _env_enabled(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _dynamic_module_names() -> list[str] | None:
+    raw = os.getenv("AUTORESEARCH_DYNAMICS_MODULES", "").strip()
+    if not raw:
+        return None
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
 
 def main():
     device = torch.device(
@@ -73,6 +89,11 @@ def main():
     test_dataset = LocalTextDataset(TEST_PATH, MAX_LENGTH, encoder=tokenizer)
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+
+    dynamics_enabled = _env_enabled(DYNAMICS_ENV)
+    dynamics_probe_inputs = None
+    if dynamics_enabled:
+        dynamics_probe_inputs = next(iter(test_loader))[0][:1].to(device)
 
     max_updates = MAX_TOKENS // (BATCH_SIZE * MAX_LENGTH)
     if max_updates < 1:
@@ -158,6 +179,19 @@ def main():
     run.summary["test_loss"] = test_loss
     run.summary["tokens_seen"] = tokens_seen
     run.summary["elapsed_seconds"] = elapsed
+    if dynamics_enabled and dynamics_probe_inputs is not None:
+        observations = capture_observations(
+            model,
+            dynamics_probe_inputs,
+            run_id=str(run.id or run.name),
+            checkpoint_tokens=tokens_seen,
+            probe_id=os.getenv("AUTORESEARCH_DYNAMICS_PROBE_ID", "validation-head-v1"),
+            module_names=_dynamic_module_names(),
+        )
+        run.summary["dynamics/observation_count"] = len(observations)
+        if observations:
+            out_dir = Path(__file__).resolve().parent / ".autoresearch" / "dynamics" / str(run.id or "run") / str(tokens_seen)
+            log_observations_to_wandb(run, observations, out_dir, update=update)
     run.finish()
     print(f"tokens_seen={tokens_seen} elapsed_seconds={elapsed:.1f}")
     print(f"test_loss={test_loss:.6f}")
