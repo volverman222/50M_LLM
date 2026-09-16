@@ -1,0 +1,133 @@
+{
+  "project": "Devpost Hackathon \u2014 50M_LLM",
+  "upstream_git_sha": "c6bdcc102af7513871c6cc09f2a0c3b1c02cb9df",
+  "checked_at_utc": "2026-09-16T02:50:11.131691+00:00",
+  "datasets": [
+    {
+      "id": "codelion/fineweb-edu-1B",
+      "revision": "66b78cd134ab7b0545a1a618a1cc029f3091eb20",
+      "configs": [
+        {
+          "config_name": "default",
+          "data_files": [
+            {
+              "split": "train",
+              "path": "data/train-*"
+            }
+          ]
+        }
+      ],
+      "provenance": "https://huggingface.co/api/datasets/codelion/fineweb-edu-1B"
+    },
+    {
+      "id": "HuggingFaceTB/smollm-corpus",
+      "revision": "3ba9d605774198c5868892d7a8deda78031a781f",
+      "configs": [
+        {
+          "config_name": "cosmopedia-v2",
+          "data_files": [
+            {
+              "split": "train",
+              "path": "cosmopedia-v2/train-*"
+            }
+          ]
+        },
+        {
+          "config_name": "fineweb-edu-dedup",
+          "data_files": [
+            {
+              "split": "train",
+              "path": "fineweb-edu-dedup/train-*"
+            }
+          ]
+        },
+        {
+          "config_name": "python-edu",
+          "data_files": [
+            {
+              "split": "train",
+              "path": "python-edu/train-*"
+            }
+          ]
+        }
+      ],
+      "provenance": "https://huggingface.co/api/datasets/HuggingFaceTB/smollm-corpus"
+    },
+    {
+      "id": "Salesforce/wikitext",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "configs": [
+        {
+          "config_name": "wikitext-103-raw-v1",
+          "data_files": [
+            {
+              "split": "test",
+              "path": "wikitext-103-raw-v1/test-*"
+            },
+            {
+              "split": "train",
+              "path": "wikitext-103-raw-v1/train-*"
+            },
+            {
+              "split": "validation",
+              "path": "wikitext-103-raw-v1/validation-*"
+            }
+          ]
+        },
+        {
+          "config_name": "wikitext-103-v1",
+          "data_files": [
+            {
+              "split": "test",
+              "path": "wikitext-103-v1/test-*"
+            },
+            {
+              "split": "train",
+              "path": "wikitext-103-v1/train-*"
+            },
+            {
+              "split": "validation",
+              "path": "wikitext-103-v1/validation-*"
+            }
+          ]
+        },
+        {
+          "config_name": "wikitext-2-raw-v1",
+          "data_files": [
+            {
+              "split": "test",
+              "path": "wikitext-2-raw-v1/test-*"
+            },
+            {
+              "split": "train",
+              "path": "wikitext-2-raw-v1/train-*"
+            },
+            {
+              "split": "validation",
+              "path": "wikitext-2-raw-v1/validation-*"
+            }
+          ]
+        },
+        {
+          "config_name": "wikitext-2-v1",
+          "data_files": [
+            {
+              "split": "test",
+              "path": "wikitext-2-v1/test-*"
+            },
+            {
+              "split": "train",
+              "path": "wikitext-2-v1/train-*"
+            },
+            {
+              "split": "validation",
+              "path": "wikitext-2-v1/validation-*"
+            }
+          ]
+        }
+      ],
+      "provenance": "https://huggingface.co/api/datasets/Salesforce/wikitext"
+    }
+  ],
+  "note": "Metadata verification only; no corpus downloaded for this audit. Profiles are not permission to launch training; benchmark preprocessing/metric choices remain separately reviewed."
+}

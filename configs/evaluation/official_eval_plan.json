@@ -1,0 +1,36 @@
+{
+  "project": "Devpost Hackathon \u2014 50M_LLM",
+  "purpose": "official_evaluation_plan",
+  "execution_status": "not_implemented_not_run",
+  "required_multiple_choice": [
+    "hellaswag",
+    "arc_easy",
+    "piqa",
+    "winogrande"
+  ],
+  "engine": "lm-evaluation-harness",
+  "engine_revision": null,
+  "checkpoint_identity": null,
+  "heldout": {
+    "dataset": "Salesforce/wikitext",
+    "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+    "config": "wikitext-103-raw-v1",
+    "development_split": "validation",
+    "final_split": "test",
+    "subset_document_ids": null,
+    "context_length": null,
+    "stride": null,
+    "scoring_unit": null
+  },
+  "gates": [
+    "Team approves exact held-out slice and scoring/window convention",
+    "Implement/validate native checkpoint adapter for harness",
+    "Pin harness revision and task definitions",
+    "Do not substitute default wikitext task: its current config is wikitext-2-raw-v1",
+    "No accuracy/perplexity result until actual evaluation receipt exists"
+  ],
+  "sources": [
+    "https://gibc-v2.devpost.com/rules",
+    "https://raw.githubusercontent.com/EleutherAI/lm-evaluation-harness/main/lm_eval/tasks/wikitext/wikitext.yaml"
+  ]
+}
