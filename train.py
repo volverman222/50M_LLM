@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from llm_mini_lab.models import LoopedGPTModel
+from rsi_architecture import build_model
 from llm_mini_lab.training import (
     LOOPED_GPT_CONFIG,
     LocalTextDataset,
@@ -28,7 +28,7 @@ from llm_mini_lab.training import (
 )
 
 # ---------------------------------------------------------------------------
-# Esta es la única sección que el agente puede modificar durante experimentos.
+# Esta configuración y rsi_architecture/ son la superficie editable del agente.
 # ---------------------------------------------------------------------------
 SEED = 123
 MAX_LENGTH = 128
@@ -84,9 +84,8 @@ def main():
         "vocab_size": vocab_size,
         "tokenizer_name": TOKENIZER_NAME,
     }
-    model = LoopedGPTModel(cfg).to(device)
+    model = build_model(cfg).to(device)
     model.apply(init_xavier)
-    model.out_head.weight = model.tok_emb.weight
     n_params = sum(parameter.numel() for parameter in model.parameters())
     if n_params > 50_000_000:
         raise ValueError(f"El modelo excede 50M de parámetros: {n_params:,}")

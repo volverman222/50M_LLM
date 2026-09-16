@@ -21,22 +21,30 @@ Each run has a fixed budget: `MAX_TOKENS = 1_000_000`, which with batch size 2
 and context length 128 equals 3,906 updates (999,936 tokens). Do not increase
 this budget or use external data to improve the metric.
 
-## Editable file
+## Editable surface
 
-Only edit `train.py`. Prefer changes in the marked editable block:
+Experiments may edit `train.py` and the dedicated `rsi_architecture/` package.
+Keep the measurement system and shared library code fixed.
 
-- optimizer hyperparameters;
-- batch size and context length, if they still work with the data;
-- `LoopedGPTModel` configuration;
-- architecture, while preserving the 50M-parameter limit;
-- training-loop details that do not alter the budget or evaluation.
+Use `train.py` for optimizer hyperparameters, batch/context settings, model
+configuration, and training-loop details that do not alter the token budget or
+evaluation. Use `rsi_architecture/` for structural model changes. The agent may create additional Python modules inside `rsi_architecture/` when an experiment
+needs a genuinely new block, attention mechanism, recurrence pattern, residual
+path, normalization scheme, or other architecture.
+
+`rsi_architecture.build_model(cfg)` is the candidate boundary. It must return a
+PyTorch module that accepts token IDs shaped `[batch, tokens]` and returns logits
+shaped `[batch, tokens, vocab_size]`. The existing 50M-parameter ceiling remains
+mandatory. The baseline factory returns the current `LoopedGPTModel`, so opening
+the architecture surface does not itself change the baseline.
 
 The baseline configuration replicates the notebook: `LoopedGPTModel`, RoPE,
 three unique layers, eight heads, `emb_dim=1024`, AdamW, learning rate `3e-4`,
 context length 128, and batch size 2.
 
-Do not install packages, change the tokenizer or data files, add benchmarks to
-the selection decision, or modify how `test_loss` is calculated.
+Do not install packages, modify code under `src/llm_mini_lab/`, change the
+tokenizer or data files, add benchmarks to the selection decision, or modify how
+`test_loss` is calculated.
 
 ## Setup
 
@@ -84,7 +92,8 @@ d4e5f6g	0.000000	crash	batch size too large
 ## Experiment loop
 
 1. Start from the commit with the best known `test_loss`.
-2. Form one concrete hypothesis and make one small change in `train.py`.
+2. Form one concrete hypothesis and make one small change in `train.py` and/or
+   `rsi_architecture/`.
 3. Commit the change and run `uv run train.py > run.log 2>&1` from this
    directory.
 4. Extract the metric with `rg '^test_loss=' run.log`.
