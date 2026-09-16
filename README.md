@@ -20,3 +20,5 @@ Cada ejecución registra configuración, pérdidas y la métrica final
 `test_loss` en Weights & Biases, dentro del proyecto `gpt2-50M`.
 
 Consulta `program.md` para el protocolo de experimentación autónoma.
+
+The autonomous search may modify `train.py` and the isolated `rsi_architecture/` candidate package while data, tokenizer, evaluation, and shared `src/llm_mini_lab/` code remain fixed.
