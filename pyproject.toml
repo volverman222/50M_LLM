@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rsi-exp"
+version = "0.1.0"
+description = "Autonomous 1M-token LoopedGPT research experiments"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "sentencepiece",
+    "tiktoken",
+    "torch>=2.6",
+    "wandb",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
