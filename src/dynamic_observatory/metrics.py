@@ -94,10 +94,16 @@ def analyze_trajectory(
     states: torch.Tensor,
     *,
     projection_basis: torch.Tensor | None = None,
+    projection_center: torch.Tensor | None = None,
     max_period: int = 8,
 ) -> DynamicsReport:
     states = _states_2d(states)
-    centered = states - states.mean(dim=0, keepdim=True)
+    center = states.mean(dim=0, keepdim=True) if projection_center is None else torch.as_tensor(
+        projection_center, dtype=torch.float32, device="cpu"
+    ).reshape(1, -1)
+    if center.shape[1] != states.shape[1]:
+        raise ValueError("projection_center must have one value per state dimension")
+    centered = states - center
     basis = fit_projection_basis(states) if projection_basis is None else torch.as_tensor(
         projection_basis, dtype=torch.float32, device="cpu"
     )

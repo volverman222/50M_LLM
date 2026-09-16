@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DYN-3D // Dynamic Structure Observatory</title>
+<style>
+:root{--bg:#080b0f;--panel:#10161d;--panel2:#141c24;--line:#273241;--text:#c9d5e1;--dim:#718398;--accent:#39dfb1;--blue:#55aaff;--warn:#ffb454;--bad:#ff617b;--mono:"JetBrains Mono",Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:12px/1.45 var(--mono)}
+body{overflow:hidden}button,input{font:inherit;color:inherit}button{background:#0b1015;border:1px solid var(--line);padding:5px 8px;cursor:pointer}button:hover{border-color:var(--accent)}
+#app{height:100vh;display:grid;grid-template-rows:36px 1fr 24px}.top{display:flex;align-items:center;gap:10px;padding:0 10px;background:#0d1218;border-bottom:1px solid var(--line)}
+.brand{color:var(--accent);font-weight:700;letter-spacing:1px}.muted{color:var(--dim)}.status{margin-left:auto;color:var(--dim)}
+.main{display:grid;grid-template-columns:260px 1fr 290px;min-height:0}.panel{background:var(--panel);overflow:auto;padding:9px}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}
+.viewport{position:relative;min-width:0;min-height:0;background:#05070a}#scene{display:block;width:100%;height:100%;cursor:grab}#scene:active{cursor:grabbing}
+.hud{position:absolute;top:10px;left:12px;pointer-events:none}.hud .mode{color:var(--accent);font-size:14px;font-weight:700;letter-spacing:1px}.hud .sub{color:var(--dim);margin-top:3px}.hud .warn{color:var(--warn);margin-top:3px}
+.foot{display:flex;align-items:center;gap:14px;padding:0 10px;background:#0d1218;border-top:1px solid var(--line);color:var(--dim)}
+.sect{border:1px solid var(--line);background:var(--panel2);margin-bottom:10px}.sect h3{font-size:10px;letter-spacing:1.5px;color:var(--dim);margin:0;padding:6px 8px;border-bottom:1px solid var(--line)}.body{padding:8px}
+label.file{display:block;border:1px dashed var(--line);padding:8px;margin-bottom:6px;cursor:pointer}label.file:hover{border-color:var(--blue)}label.file input{display:none}
+.row{display:flex;gap:6px;align-items:center;margin:5px 0}.row>*{min-width:0}.row label{color:var(--dim);flex:1}.row input[type=checkbox]{accent-color:var(--accent)}
+.item{padding:6px;border:1px solid transparent;cursor:pointer;margin-bottom:4px;background:#0e141a}.item:hover{border-color:var(--line)}.item.on{border-color:var(--accent);background:#10241f}.item .small{font-size:10px;color:var(--dim);margin-top:2px}
+.metric{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dotted #222b36}.metric .k{color:var(--dim)}.metric .v{text-align:right}.tag{font-size:9px;border:1px solid var(--line);padding:1px 4px}.tag.fixed{color:var(--accent);border-color:#245845}.tag.local{color:var(--warn);border-color:#5d4720}
+.note{font-size:10px;color:var(--dim);line-height:1.5}.btns{display:flex;gap:5px;flex-wrap:wrap}.empty{color:var(--dim);padding:8px 0}.swatch{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
+@media(max-width:900px){.main{grid-template-columns:220px 1fr}.right{display:none}}@media(max-width:650px){body{overflow:auto}#app{height:auto;min-height:100vh}.main{display:block}.panel{border:0!important}.viewport{height:58vh}}
+</style>
+</head><body>
+<div id="app">
+  <div class="top"><span class="brand">DYN-3D</span><span class="muted">// FIXED-FRAME DYNAMIC STRUCTURE OBSERVATORY</span><span class="status" id="status">awaiting evidence</span></div>
+  <div class="main">
+    <aside class="panel left">
+      <section class="sect"><h3>EVIDENCE</h3><div class="body">
+        <label class="file">OBSERVATION JSON<input id="observation-files" type="file" accept="application/json,.json" multiple></label>
+        <label class="file">REFERENCE FRAME JSON<input id="reference-files" type="file" accept="application/json,.json" multiple></label>
+        <div class="btns"><button id="clear" type="button">CLEAR</button><button id="reset-view" type="button">RESET VIEW</button></div>
+        <p class="note">Load <b>devpost.dynamic_observation.v1</b> artifacts and optional fixed reference frames. All files remain local to this page.</p>
+      </div></section>
+      <section class="sect"><h3>RENDER</h3><div class="body">
+        <div class="row"><label for="show-axes">axes</label><input id="show-axes" type="checkbox" checked></div>
+        <div class="row"><label for="show-points">state points</label><input id="show-points" type="checkbox" checked></div>
+        <div class="row"><label for="show-deltas">delta vectors</label><input id="show-deltas" type="checkbox"></div>
+        <div class="row"><label for="auto-spin">auto orbit</label><input id="auto-spin" type="checkbox"></div>
+        <div class="row"><label for="perspective">perspective</label><input id="perspective" type="checkbox" checked></div>
+      </div></section>
+      <section class="sect"><h3>TRACES</h3><div class="body" id="trace-list"><div class="empty">No observations loaded.</div></div></section>
+    </aside>
+    <section class="viewport">
+      <canvas id="scene" aria-label="Interactive 3D hidden-state trajectory viewer"></canvas>
+      <div class="hud"><div class="mode" id="hud-mode">NO DATA</div><div class="sub" id="hud-sub">drag to orbit · wheel to dolly</div><div class="warn" id="hud-warn"></div></div>
+    </section>
+    <aside class="panel right">
+      <section class="sect"><h3>SELECTED TRACE</h3><div class="body" id="selected"><div class="empty">Select a trace.</div></div></section>
+      <section class="sect"><h3>DYNAMIC METRICS</h3><div class="body" id="metrics"><div class="empty">No metrics.</div></div></section>
+      <section class="sect"><h3>PROVENANCE</h3><div class="body" id="provenance"><div class="empty">No evidence loaded.</div></div></section>
+    </aside>
+  </div>
+  <div class="foot"><span id="fps">— fps</span><span id="counts">0 observations · 0 reference frames</span><span style="margin-left:auto">LIVE / REPLAY / DERIVED / N/A only</span></div>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s), canvas=$("#scene"), ctx=canvas.getContext("2d");
+const state={observations:[],frames:new Map(),selected:-1,yaw:.65,pitch:.35,dist:4.2,drag:null,lastT:performance.now(),framesRendered:0,fps:0};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const keyFor=(p,t)=>`${p}::${t}`;
+const fmt=(v,d=4)=>Number.isFinite(Number(v))?Number(v).toFixed(d):"—";
+function readJson(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{try{resolve(JSON.parse(String(r.result)))}catch(e){reject(e)}};r.onerror=()=>reject(r.error);r.readAsText(file);});}
+function validObservation(o){return o&&o.schema==="devpost.dynamic_observation.v1"&&Array.isArray(o.states)&&o.states.length>0&&Array.isArray(o.states[0]);}
+function validFrame(f){return f&&f.schema==="devpost.dynamic_reference_frame.v1"&&Array.isArray(f.center)&&Array.isArray(f.basis);}
+function vecDot(a,b){let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s;}
+function vecNorm(a){return Math.sqrt(vecDot(a,a))||1;}
+function centeredStates(states){const n=states.length,d=states[0].length,mu=Array(d).fill(0);for(const row of states)for(let j=0;j<d;j++)mu[j]+=row[j]/n;return{mu,x:states.map(row=>row.map((v,j)=>v-mu[j]))};}
+function orthogonalize(v,basis){for(const b of basis){const q=vecDot(v,b);for(let j=0;j<v.length;j++)v[j]-=q*b[j];}const n=vecNorm(v);for(let j=0;j<v.length;j++)v[j]/=n;return v;}
+function covMul(x,v){const n=x.length,d=v.length,tmp=Array(n).fill(0),out=Array(d).fill(0);for(let i=0;i<n;i++)tmp[i]=vecDot(x[i],v);for(let i=0;i<n;i++)for(let j=0;j<d;j++)out[j]+=x[i][j]*tmp[i];return out;}
+function localPca(states,k=3){const {mu,x}=centeredStates(states),d=mu.length,basis=[];for(let c=0;c<Math.min(k,d);c++){let v=Array(d).fill(0);v[c%d]=1;for(let it=0;it<36;it++)v=orthogonalize(covMul(x,v),basis);let pivot=0;for(let j=1;j<d;j++)if(Math.abs(v[j])>Math.abs(v[pivot]))pivot=j;if(v[pivot]<0)v=v.map(q=>-q);basis.push(v);}return{center:mu,basis:Array.from({length:d},(_,j)=>basis.map(v=>v[j]))};}
+function project(states,frame){const center=frame.center,basis=frame.basis,w=basis[0].length;return states.map(row=>{const out=Array(w).fill(0);for(let j=0;j<row.length;j++){const dv=row[j]-center[j];for(let c=0;c<w;c++)out[c]+=dv*basis[j][c];}while(out.length<3)out.push(0);return out.slice(0,3);});}
+function resolveProjection(obs){const fixed=state.frames.get(keyFor(obs.probe_id,obs.trace_name));if(fixed&&fixed.center.length===obs.states[0].length)return{points:project(obs.states,fixed),kind:"FIXED_REFERENCE",frame:fixed};const local=localPca(obs.states);return{points:project(obs.states,local),kind:"LOCAL_PCA_UNCALIBRATED",frame:null};}
+function enrich(obs,fileName){const p=resolveProjection(obs);return{...obs,_file:fileName,_points:p.points,_projection:p.kind,_frame:p.frame,_visible:true};}
+async function loadObservations(files){for(const file of files){try{const raw=await readJson(file);if(!validObservation(raw))throw new Error("not a dynamic observation");state.observations.push(enrich(raw,file.name));}catch(e){console.error(file.name,e);}}if(state.selected<0&&state.observations.length)state.selected=0;refresh();}
+async function loadFrames(files){for(const file of files){try{const raw=await readJson(file);if(!validFrame(raw))throw new Error("not a reference frame");state.frames.set(keyFor(raw.probe_id,raw.trace_name),raw);}catch(e){console.error(file.name,e);}}state.observations=state.observations.map(o=>enrich(o,o._file));refresh();}
+function colorFor(i){return `hsl(${(i*71+168)%360} 72% 62%)`;}
+function rotatePoint(p){const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.cos(state.pitch),sp=Math.sin(state.pitch);const x=cy*p[0]+sy*p[2],z=-sy*p[0]+cy*p[2];return[x,cp*p[1]-sp*z,sp*p[1]+cp*z];}
+function cameraProject(p,w,h,scale){const r=rotatePoint(p),persp=$("#perspective").checked;let k=scale;if(persp)k*=state.dist/(state.dist+r[2]+1e-3);return{x:w/2+r[0]*k,y:h/2-r[1]*k,z:r[2],k};}
+function visibleSeries(){return state.observations.map((o,i)=>({o,i})).filter(x=>x.o._visible);}
+function sceneScale(w,h){let m=1e-6;for(const {o} of visibleSeries())for(const p of o._points)m=Math.max(m,Math.hypot(...p));return Math.min(w,h)*.33/m;}
+function drawAxes(w,h,scale){if(!$("#show-axes").checked)return;const len=1/Math.max(1e-9,scale/(Math.min(w,h)*.33));const axes=[[[0,0,0],[len,0,0],"X"],[[0,0,0],[0,len,0],"Y"],[[0,0,0],[0,0,len],"Z"]];ctx.lineWidth=1;ctx.font="10px monospace";for(const [a,b,label] of axes){const pa=cameraProject(a,w,h,scale),pb=cameraProject(b,w,h,scale);ctx.strokeStyle="#405064";ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();ctx.fillStyle="#6f8298";ctx.fillText(label,pb.x+3,pb.y-3);}}
+function drawTrace(obs,index,w,h,scale){const pts=obs._points.map(p=>cameraProject(p,w,h,scale));const color=colorFor(index);ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=index===state.selected?2.4:1.4;ctx.globalAlpha=obs._visible?1:0.2;ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();if($("#show-points").checked){pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,index===state.selected?4:3,0,Math.PI*2);ctx.fill();if(index===state.selected){ctx.fillStyle="#a9b9c8";ctx.font="9px monospace";ctx.fillText(String(i),p.x+5,p.y-5);ctx.fillStyle=color;}});}if($("#show-deltas").checked&&pts.length>1){ctx.globalAlpha=.45;for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],mx=a.x+(b.x-a.x)*.72,my=a.y+(b.y-a.y)*.72;ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(b.x,b.y);ctx.stroke();}}ctx.globalAlpha=1;}
+function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2),w=Math.max(1,Math.floor(r.width*dpr)),h=Math.max(1,Math.floor(r.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}ctx.setTransform(dpr,0,0,dpr,0,0);return{w:r.width,h:r.height};}
+function render(t){const {w,h}=resize();ctx.clearRect(0,0,w,h);ctx.fillStyle="#05070a";ctx.fillRect(0,0,w,h);if($("#auto-spin").checked&&!(matchMedia("(prefers-reduced-motion: reduce)").matches))state.yaw+=.0025;const scale=sceneScale(w,h)/state.dist*4.2;drawAxes(w,h,scale);for(const {o,i} of visibleSeries())drawTrace(o,i,w,h,scale);state.framesRendered++;if(t-state.lastT>500){state.fps=state.framesRendered*1000/(t-state.lastT);state.framesRendered=0;state.lastT=t;$("#fps").textContent=`${state.fps.toFixed(0)} fps`;}requestAnimationFrame(render);}
+function metricRows(metrics){const order=["steps","state_dim","phase_velocity","phase_coherence","radius_drift","dominant_frequency","spectral_entropy"];const rows=[];for(const k of order)if(k in metrics)rows.push([k,metrics[k]]);const closure=metrics.closure_errors||{};for(const k of Object.keys(closure).sort((a,b)=>Number(a)-Number(b)))rows.push([`closure_q${k}`,closure[k]]);return rows;}
+function refreshTraceList(){const root=$("#trace-list");if(!state.observations.length){root.innerHTML='<div class="empty">No observations loaded.</div>';return;}root.innerHTML="";state.observations.forEach((o,i)=>{const el=document.createElement("div");el.className="item"+(i===state.selected?" on":"");const fixed=o._projection==="FIXED_REFERENCE";el.innerHTML=`<div><span class="swatch" style="background:${colorFor(i)}"></span>${escapeHtml(o.trace_name)}</div><div class="small">${escapeHtml(o.run_id)} · ${Number(o.checkpoint_tokens).toLocaleString()} tok · <span class="tag ${fixed?"fixed":"local"}">${o._projection}</span></div>`;el.addEventListener("click",()=>{state.selected=i;refresh();});root.appendChild(el);});}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function refreshSelected(){const o=state.observations[state.selected],sel=$("#selected"),met=$("#metrics"),prov=$("#provenance");if(!o){sel.innerHTML='<div class="empty">Select a trace.</div>';met.innerHTML='<div class="empty">No metrics.</div>';prov.innerHTML='<div class="empty">No evidence loaded.</div>';return;}const fixed=o._projection==="FIXED_REFERENCE";sel.innerHTML=`<div class="metric"><span class="k">run</span><span class="v">${escapeHtml(o.run_id)}</span></div><div class="metric"><span class="k">trace</span><span class="v">${escapeHtml(o.trace_name)}</span></div><div class="metric"><span class="k">checkpoint</span><span class="v">${Number(o.checkpoint_tokens).toLocaleString()} tokens</span></div><div class="metric"><span class="k">projection</span><span class="v"><span class="tag ${fixed?"fixed":"local"}">${o._projection}</span></span></div>`;met.innerHTML=metricRows(o.metrics||{}).map(([k,v])=>`<div class="metric"><span class="k">${escapeHtml(k)}</span><span class="v">${typeof v==="number"?fmt(v):escapeHtml(v)}</span></div>`).join("")||'<div class="empty">No metrics.</div>';prov.innerHTML=`<div class="metric"><span class="k">source</span><span class="v">${escapeHtml(o.source)}</span></div><div class="metric"><span class="k">probe</span><span class="v">${escapeHtml(o.probe_id)}</span></div><div class="metric"><span class="k">file</span><span class="v">${escapeHtml(o._file)}</span></div>${o._frame?`<div class="metric"><span class="k">frame run</span><span class="v">${escapeHtml(o._frame.run_id)}</span></div><div class="metric"><span class="k">frame checkpoint</span><span class="v">${Number(o._frame.checkpoint_tokens).toLocaleString()}</span></div>`:""}`;}
+function refresh(){refreshTraceList();refreshSelected();$("#counts").textContent=`${state.observations.length} observations · ${state.frames.size} reference frames`;const o=state.observations[state.selected];$("#hud-mode").textContent=o?o.trace_name:"NO DATA";$("#hud-warn").textContent=o&&o._projection!=="FIXED_REFERENCE"?"UNCALIBRATED LOCAL PCA — do not compare geometry across runs":"";$("#status").textContent=o?`${o.run_id} @ ${Number(o.checkpoint_tokens).toLocaleString()} tokens`:"awaiting evidence";}
+$("#observation-files").addEventListener("change",e=>loadObservations([...e.target.files]));
+$("#reference-files").addEventListener("change",e=>loadFrames([...e.target.files]));
+$("#clear").addEventListener("click",()=>{state.observations=[];state.frames.clear();state.selected=-1;refresh();});
+$("#reset-view").addEventListener("click",()=>{state.yaw=.65;state.pitch=.35;state.dist=4.2;});
+canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);state.drag={x:e.clientX,y:e.clientY,yaw:state.yaw,pitch:state.pitch};});
+canvas.addEventListener("pointermove",e=>{if(!state.drag)return;state.yaw=state.drag.yaw+(e.clientX-state.drag.x)*.008;state.pitch=clamp(state.drag.pitch+(e.clientY-state.drag.y)*.008,-1.45,1.45);});
+canvas.addEventListener("pointerup",()=>state.drag=null);canvas.addEventListener("pointercancel",()=>state.drag=null);
+canvas.addEventListener("wheel",e=>{e.preventDefault();state.dist=clamp(state.dist*Math.exp(e.deltaY*.001),1.2,12);},{passive:false});
+for(const id of ["show-axes","show-points","show-deltas","perspective"])$(id.startsWith("#")?id:`#${id}`).addEventListener("change",refresh);
+window.addEventListener("dragover",e=>e.preventDefault());
+window.addEventListener("drop",async e=>{e.preventDefault();const files=[...e.dataTransfer.files].filter(f=>f.name.toLowerCase().endsWith(".json"));const obs=[],refs=[];for(const file of files){try{const raw=await readJson(file);if(validObservation(raw))obs.push(file);else if(validFrame(raw))refs.push(file);}catch(err){console.error(file.name,err);}}if(refs.length)await loadFrames(refs);if(obs.length)await loadObservations(obs);});
+refresh();requestAnimationFrame(render);
+</script>
+</body>
+</html>
