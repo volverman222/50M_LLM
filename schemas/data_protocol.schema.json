@@ -1,0 +1,371 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "protocol_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,80}$"
+    },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "backend": {
+              "const": "huggingface"
+            },
+            "dataset": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+            },
+            "config": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "split": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]+$"
+            },
+            "text_field": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "backend",
+            "dataset",
+            "config",
+            "revision",
+            "split",
+            "text_field"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "backend": {
+              "const": "local_jsonl"
+            },
+            "files": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "hashes": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "text_field": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "backend",
+            "files",
+            "hashes",
+            "text_field"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tokenizer": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "const": "sp16384"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "name",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "const": "gpt2"
+            },
+            "sha256": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "name",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sequence": {
+      "type": "object",
+      "properties": {
+        "length": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 65536
+        },
+        "packing": {
+          "enum": [
+            "packed",
+            "document"
+          ]
+        },
+        "add_eos": {
+          "type": "boolean"
+        },
+        "drop_tail": {
+          "const": true
+        }
+      },
+      "required": [
+        "length",
+        "packing",
+        "add_eos",
+        "drop_tail"
+      ],
+      "additionalProperties": false
+    },
+    "split": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "enum": [
+                "stable_hash",
+                "upstream_modulo"
+              ]
+            },
+            "modulus": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "validation_buckets": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "test_buckets": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "uniqueItems": true
+            },
+            "seed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "strategy",
+            "modulus",
+            "validation_buckets",
+            "test_buckets",
+            "seed"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "const": "source_splits"
+            },
+            "names": {
+              "type": "object",
+              "properties": {
+                "train": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]+$"
+                },
+                "validation": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.-]+$"
+                },
+                "test": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.-]+$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "train",
+                "validation",
+                "test"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "strategy",
+            "names"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "order": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shuffle_buffer": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reseed_each_epoch": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "seed",
+        "shuffle_buffer",
+        "reseed_each_epoch"
+      ],
+      "additionalProperties": false
+    },
+    "batch": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "drop_last": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "size",
+        "drop_last"
+      ],
+      "additionalProperties": false
+    },
+    "num_workers": {
+      "const": 0
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "train": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validation": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "test": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "protocol_id",
+    "source",
+    "tokenizer",
+    "sequence",
+    "split",
+    "order",
+    "batch",
+    "num_workers"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Devpost Hackathon \u2014 data protocol v1",
+  "$comment": "Runtime validation additionally checks cross-field bucket overlap/range, local file mapping, hash integrity, distinct split identity and CLI compatibility.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "split": {
+            "properties": {
+              "strategy": {
+                "const": "upstream_modulo"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "order": {
+            "properties": {
+              "reseed_each_epoch": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

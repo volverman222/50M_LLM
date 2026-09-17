@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "protocol_id": "fineweb-edu-stable-hash-128",
+  "source": {
+    "backend": "huggingface",
+    "dataset": "codelion/fineweb-edu-1B",
+    "config": "default",
+    "revision": "66b78cd134ab7b0545a1a618a1cc029f3091eb20",
+    "split": "train",
+    "text_field": "text"
+  },
+  "tokenizer": {
+    "name": "sp16384",
+    "sha256": "a8e84302bbddff8d91aa6ab305e0861f13ee6a08bd822f6c164253a16f6b5ba5"
+  },
+  "sequence": {
+    "length": 128,
+    "packing": "packed",
+    "add_eos": true,
+    "drop_tail": true
+  },
+  "split": {
+    "strategy": "stable_hash",
+    "modulus": 100,
+    "validation_buckets": [
+      0
+    ],
+    "test_buckets": [
+      1
+    ],
+    "seed": 123
+  },
+  "order": {
+    "seed": 123,
+    "shuffle_buffer": 10000,
+    "reseed_each_epoch": true
+  },
+  "batch": {
+    "size": 16,
+    "drop_last": true
+  },
+  "num_workers": 0
+}

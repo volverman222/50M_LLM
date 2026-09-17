@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "protocol_id": "wikitext103-native-splits-128",
+  "source": {
+    "backend": "huggingface",
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-103-raw-v1",
+    "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+    "split": "train",
+    "text_field": "text"
+  },
+  "tokenizer": {
+    "name": "sp16384",
+    "sha256": "a8e84302bbddff8d91aa6ab305e0861f13ee6a08bd822f6c164253a16f6b5ba5"
+  },
+  "sequence": {
+    "length": 128,
+    "packing": "packed",
+    "add_eos": true,
+    "drop_tail": true
+  },
+  "split": {
+    "strategy": "source_splits",
+    "names": {
+      "train": "train",
+      "validation": "validation",
+      "test": "test"
+    }
+  },
+  "order": {
+    "seed": 123,
+    "shuffle_buffer": 0,
+    "reseed_each_epoch": false
+  },
+  "batch": {
+    "size": 16,
+    "drop_last": true
+  },
+  "num_workers": 0
+}

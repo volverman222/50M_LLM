@@ -52,6 +52,8 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=f"Preentrenamiento streaming sobre 1B tokens de {dataset_label}."
     )
+    parser.add_argument("--data-protocol", type=Path, default=None,
+                        help="Optional pinned dataset/order/split/sequence JSON protocol.")
     parser.add_argument("--target-tokens", type=int, default=1_000_000_000)
     parser.add_argument("--context-length", type=int, default=256)
     parser.add_argument("--emb-dim", type=int, default=None)
@@ -147,6 +149,9 @@ def parse_args(dataset: str = "fineweb") -> argparse.Namespace:
 
 def create_stream_loaders(args: argparse.Namespace, dataset: str, seed: int,
                           encoder: Any):
+    if getattr(args, "data_protocol", None) is not None:
+        from llm_mini_lab.data_protocol import protocol_loaders
+        return protocol_loaders(args, encoder, epoch=seed-args.seed)
     common = {
         "batch_size": args.micro_batch_size,
         "max_length": args.context_length,
@@ -323,7 +328,17 @@ def evaluate(model: torch.nn.Module, loader: Any, max_batches: int,
 
 def main(dataset: str = "fineweb") -> None:
     args = parse_args(dataset)
+    input_trace = None
+    if args.data_protocol is not None:
+        from llm_mini_lab.data_protocol import read, validate_runtime, receipt
+        data_contract = read(args.data_protocol)
+        validate_runtime(data_contract, args)
+        args._data_contract = data_contract
+        from llm_mini_lab.data_protocol import ConsumptionTrace, fingerprint
+        input_trace = ConsumptionTrace()
     tokenizer = load_tokenizer(args.tokenizer, args.tokenizer_model)
+    data_label = (data_contract["source"].get("dataset","local_jsonl")
+                  if args.data_protocol is not None else dataset)
     device = choose_device(args.device)
     seed_everything(args.seed)
     if device.type == "cuda":
@@ -405,7 +420,7 @@ def main(dataset: str = "fineweb") -> None:
         with args.telemetry_jsonl.open("x", encoding="utf-8"):
             pass  # Use a new evidence path on resume; never overwrite a log.
         append_jsonl(args.telemetry_jsonl, [{
-            "kind": "config", "schema_version": 1, "dataset": dataset, "config": cfg, "args": {
+            "kind": "config", "schema_version": 1, "dataset": data_label, "config": cfg, "args": {
                 key: str(value) if isinstance(value, Path) else value
                 for key, value in vars(args).items()
             },
@@ -414,6 +429,10 @@ def main(dataset: str = "fineweb") -> None:
 
     # Los loaders de evaluación se materializan una vez para que comparar
     # checkpoints no cambie el estado del stream de entrenamiento.
+    if args.data_protocol is not None:
+        args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        (args.checkpoint_dir / "data_protocol_receipt.json").write_text(
+            json.dumps(receipt(data_contract), indent=2), encoding="utf-8")
     train_loader, val_loader = create_stream_loaders(
         args, dataset, args.seed + stream_epoch, tokenizer,
     )
@@ -421,6 +440,11 @@ def main(dataset: str = "fineweb") -> None:
         train_loader, val_loader, max_train_batches=1,
         max_val_batches=args.eval_batches,
     )
+    if args.data_protocol is not None:
+        from llm_mini_lab.data_protocol import fixed_validation_identity
+        (args.checkpoint_dir / "fixed_validation_identity.json").write_text(
+            json.dumps(fixed_validation_identity(fixed_val_loader, args.eval_batches), indent=2),
+            encoding="utf-8")
 
     wandb = None
     run = None
@@ -430,7 +454,7 @@ def main(dataset: str = "fineweb") -> None:
         run = wandb.init(project=args.wandb_project, name=args.run_name,
                          id=resume_wandb_id,
                          resume="must" if resume_wandb_id else None,
-                         config=public_config({"dataset": dataset, "config": cfg, "args": vars(args),
+                         config=public_config({"dataset": data_label, "config": cfg, "args": vars(args),
                                                "parameter_count": parameter_count}))
         wandb.define_metric("update")
         wandb.define_metric("*", step_metric="update")
@@ -452,6 +476,8 @@ def main(dataset: str = "fineweb") -> None:
             produced_batch = False
             for inputs, targets in train_loader:
                 produced_batch = True
+                if input_trace is not None:
+                    traced_pair = (inputs, targets)
                 inputs = inputs.to(device, non_blocking=True)
                 targets = targets.to(device, non_blocking=True)
                 if microbatches_accumulated == 0:
@@ -482,6 +508,8 @@ def main(dataset: str = "fineweb") -> None:
                 if not torch.isfinite(loss):
                     raise FloatingPointError(f"Loss no finita en update {update + 1}")
                 scaler.scale(scaled_loss).backward()
+                if input_trace is not None:
+                    input_trace.observe(*traced_pair)
 
                 # Cuenta tokens realmente procesados, incluidos microbatches.
                 tokens_seen += inputs.numel()
@@ -612,7 +640,7 @@ def main(dataset: str = "fineweb") -> None:
         if args.hf_upload_every > 0:
             upload_checkpoint_to_hf(final_path, args.hf_repo, update)
         summary = {
-            "dataset": dataset,
+            "dataset": data_label,
             "tokens_seen": tokens_seen,
             "updates": update,
             "target_tokens": args.target_tokens,
@@ -623,6 +651,12 @@ def main(dataset: str = "fineweb") -> None:
             "target_reached": tokens_seen >= args.target_tokens,
             "checkpoint": str(final_path),
         }
+        if input_trace is not None:
+            input_identity = input_trace.receipt()
+            input_identity['protocol_sha256'] = fingerprint(data_contract)
+            atomic_save_json(input_identity, args.checkpoint_dir / 'training_input_identity.json')
+            summary['data_protocol_sha256'] = input_identity['protocol_sha256']
+            summary['training_input_sha256'] = input_identity['sha256']
         summary_path = args.checkpoint_dir / "training_summary.json"
         atomic_save_json(summary, summary_path)
         if wandb:

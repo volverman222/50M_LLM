@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devpost-experiment-orchestrator"
+version = "0.3.0"
+description = "Local experiment queue, evidence ledger and monitoring for Devpost Hackathon"
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2", "psutil>=5.9", "rich>=13"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+expctl = "exp_orchestrator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
