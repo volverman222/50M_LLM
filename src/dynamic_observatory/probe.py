@@ -10,6 +10,7 @@ from torch import nn
 from .artifact import DynamicObservation
 from .capture import TraceRecorder
 from .metrics import analyze_trajectory
+from .reference import DynamicReferenceFrame
 
 
 def discover_repeated_modules(
@@ -53,6 +54,7 @@ def capture_observations(
     probe_id: str,
     module_names: Sequence[str] | None = None,
     projection_bases: Mapping[str, torch.Tensor] | None = None,
+    reference_frames: Mapping[str, DynamicReferenceFrame] | None = None,
     max_period: int = 8,
 ) -> list[DynamicObservation]:
     names = list(module_names) if module_names is not None else discover_repeated_modules(model, probe_inputs)
@@ -69,16 +71,27 @@ def capture_observations(
 
     records: list[DynamicObservation] = []
     bases = projection_bases or {}
+    frames = reference_frames or {}
     for name in names:
         trajectory = recorder.trajectory(name)
-        basis = bases.get(name)
-        report = analyze_trajectory(trajectory, projection_basis=basis, max_period=max_period)
+        frame = frames.get(name)
+        if frame is not None:
+            if frame.probe_id != probe_id or frame.trace_name != name:
+                raise ValueError(f"reference frame does not match probe/trace: {name}")
+            if frame.state_dim != trajectory.shape[1]:
+                raise ValueError(f"reference frame dimension mismatch: {name}")
+        basis = torch.tensor(frame.basis) if frame is not None else bases.get(name)
+        center = torch.tensor(frame.center) if frame is not None else None
+        report = analyze_trajectory(trajectory, projection_basis=basis, projection_center=center, max_period=max_period)
         metrics = report.metrics_dict()
         metrics.update({
             "steps": int(trajectory.shape[0]),
             "state_dim": int(trajectory.shape[1]),
-            "projection_basis": "FIXED_REFERENCE" if basis is not None else "LOCAL_PCA_UNCALIBRATED",
+            "projection_basis": "FIXED_REFERENCE" if frame is not None else ("FIXED_BASIS_LOCAL_CENTER" if basis is not None else "LOCAL_PCA_UNCALIBRATED"),
         })
+        if frame is not None:
+            metrics["reference_run_id"] = frame.run_id
+            metrics["reference_checkpoint_tokens"] = frame.checkpoint_tokens
         records.append(DynamicObservation(
             run_id=run_id,
             checkpoint_tokens=checkpoint_tokens,

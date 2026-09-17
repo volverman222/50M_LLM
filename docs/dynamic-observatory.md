@@ -44,9 +44,17 @@ under `dynamics/<trace>/...` plus the JSON records as a `dynamic-observation` ar
 
 When no reference projection is supplied, each trace is tagged
 `LOCAL_PCA_UNCALIBRATED`. That view is useful for within-trajectory structure but must not be treated
-as a fixed coordinate system across checkpoints or runs. Cross-run geometric comparison requires one
-reference PCA/SVD frame fitted once and then reused; persistence/loading of that fixed frame is the next
-implementation slice.
+as a fixed coordinate system across checkpoints or runs.
+
+For cross-run comparison, build one persisted reference frame from the chosen baseline observation:
+
+```powershell
+uv run python -m dynamic_observatory.cli reference baseline-observation.json baseline-frame.json
+```
+
+The frame schema is `devpost.dynamic_reference_frame.v1` and stores the baseline center and deterministic
+PCA/SVD basis. Reusing both fixes the coordinate system across checkpoints and preserves real displacement
+instead of re-centering every candidate independently.
 
 ## Enable the final-run probe
 
@@ -61,3 +69,18 @@ Optional explicit module selection:
 ```powershell
 $env:AUTORESEARCH_DYNAMICS_MODULES = "trf_blocks.0,trf_blocks.1,trf_blocks.2"
 ```
+
+## DYN-3D viewer
+
+Open `tools/dynamic_observatory_viewer/index.html` in a browser. The viewer is deliberately offline:
+it does not fetch remote data and accepts research evidence only through local JSON file selection or
+drag-and-drop.
+
+Load one or more `devpost.dynamic_observation.v1` files. For cross-run overlays, also load the matching
+`devpost.dynamic_reference_frame.v1` file. Traces that match the fixed probe/trace frame are marked
+`FIXED_REFERENCE`; unmatched traces fall back to `LOCAL_PCA_UNCALIBRATED` and display a comparison
+warning.
+
+The viewer provides orbit/dolly interaction, trajectory overlays, state points, delta-vector display,
+axes, selected-trace provenance, closure metrics, phase/coherence metrics, spectral metrics, and token
+checkpoint context. It never feeds a visual score back into the keep/discard rule.
