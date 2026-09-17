@@ -2,7 +2,7 @@
 
 This runbook is the operator companion to [`adr/ADR-0001-governed-autoresearch-evidence-boundaries.md`](adr/ADR-0001-governed-autoresearch-evidence-boundaries.md).
 
-It covers the merged `rsi_exp` architecture-search, W&B/ARIA feedback, Dynamic Observatory and DYN-3D surfaces. The local orchestrator/data-protocol candidate is documented separately at the end because it lives on another branch and remains owner-review only.
+It covers the merged `rsi_exp` architecture-search, W&B/ARIA feedback, Dynamic Observatory and DYN-3D surfaces. An adjacent orchestrator/data-protocol contribution is referenced separately because it is not part of this `rsi_exp` checkout.
 
 ## 1. Authority before action
 
@@ -14,7 +14,7 @@ Before operating the system, distinguish these actions:
 - **execute:** start training or another experiment process;
 - **publish:** push, open/update a PR, request review, merge or release.
 
-These are not interchangeable. External ARIA output and DYN-3D visualizations are observation/proposal inputs only. The owner-review gate for the local orchestrator candidate applies independently of whether tests pass.
+These are not interchangeable. External ARIA output and DYN-3D visualizations are observation/proposal inputs only. Execution and publication remain separate operator decisions even when software checks pass.
 
 ## 2. Checkout and preflight
 
@@ -290,11 +290,11 @@ Code rollback and scientific evidence rollback are different operations.
 - Do not rewrite W&B runs, ARIA receipts, dynamic observations or reference frames to match a reverted commit.
 - If a reference frame is superseded, keep the old file and create a new identity rather than editing it in place.
 - If a protocol changes, create a new comparison family instead of retroactively relabeling prior runs.
-## 14. Adjacent local orchestrator candidate
+## 14. Adjacent orchestrator contribution
 
-**Status:** local owner-review candidate on `review/orchestrator-data-alignment-20260916t022908z` at `80a926c`; not part of this `rsi_exp` checkout and not approved for publication.
+**Status:** separate contribution; not part of this `rsi_exp` checkout.
 
-From that candidate's repository root, the generic package can be installed independently of PyTorch:
+From that contribution's repository root, the generic package can be installed independently of PyTorch:
 
 ```powershell
 python -m venv .venv
@@ -335,7 +335,7 @@ The package's database is an index over run evidence, not the source of truth. `
 
 ### Orchestrator verification
 
-From the local integration candidate:
+From that contribution's repository root:
 
 ```powershell
 python -m pytest tools/experiment_orchestrator/tests -q
@@ -354,9 +354,9 @@ expctl --root unused verify-package /path/to/new-release --source tools/experime
 ```
 
 Create a new release directory rather than editing a recorded release in place.
-## 15. Owner-review package checklist
+## 15. Adjacent contribution review checklist
 
-Before any new publication of the adjacent integration candidate, present the exact package locally with:
+Before integrating or publishing the adjacent contribution, review the exact package with:
 
 - current branch and commit SHA;
 - readable changed-file list and diff summary;
@@ -370,7 +370,7 @@ Before any new publication of the adjacent integration candidate, present the ex
 - proposed PR title/body and target branch;
 - confirmation that no datasets, checkpoints, credentials or unrelated private project files are included.
 
-Do **not** push a branch, open/update a PR, request a reviewer, merge or publish a release for that candidate until the owner has reviewed the actual package and explicitly approved publication.
+Keep implementation, review, and publication as distinct steps.
 
 ## 16. Fast operator checklist
 
@@ -388,7 +388,7 @@ Before a comparable RSI run:
 [ ] dynamics, if enabled, treated as advisory
 [ ] fixed frame present before cross-run geometry claims
 [ ] ARIA analysis treated as advisory_only
-[ ] publication approval handled separately from implementation
+[ ] execution/publication decision kept separate from evidence
 ```
 
 When in doubt, preserve the evidence and reduce authority rather than silently inferring permission or comparability.
@@ -411,20 +411,6 @@ The documentation screenshots are intentionally narrow and provenance-labeled. T
 See [`screenshots/README.md`](screenshots/README.md) for exact screenshot provenance and non-evidence status.
 ### Adjacent orchestrator browser qualification
 
-![Local orchestrator owner-review dashboard](screenshots/orchestrator-dashboard-owner-review.png)
+![Adjacent orchestrator dashboard](screenshots/orchestrator-dashboard.png)
 
-This screenshot comes from the existing standalone-integration review evidence. It documents the local candidate's operator surface and provenance views; it does **not** change its owner-review/publication status.
-
-## 18. Verified checkout portability
-
-`train.py` and `prepare.py` resolve the project resource root in both direct `rsi_exp` checkouts and the earlier nested layout. If setup unexpectedly reports the tokenizer or local data one directory above the checkout, treat that as a regression and run `tests/test_portable_checkout.py` before proceeding.
-
-The 2026-09-17 documentation pass verified a direct worktree with:
-
-```text
-prepare.py: PASS
-28 unit tests: PASS
-compileall: PASS
-LoopedGPTModel parameters: 42,070,080
-git diff --check: PASS
-```
+This screenshot documents the adjacent contribution's operator surface and provenance views. It does not imply that the contribution is part of `rsi_exp`.

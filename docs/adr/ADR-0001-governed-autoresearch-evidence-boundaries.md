@@ -1,14 +1,13 @@
 # ADR-0001: Governed autoresearch and evidence boundaries
 
-- **Status:** Accepted for the merged `rsi_exp` surface; adjacent orchestrator package remains owner-review only.
+- **Status:** Accepted for the merged `rsi_exp` surface.
 - **Date:** 2026-09-17
 - **Project:** Devpost Hackathon — 50M_LLM
 - **Merged research baseline:** `origin/rsi_exp` at `c16e4cc`
-- **Adjacent local integration candidate:** `review/orchestrator-data-alignment-20260916t022908z` at `80a926c`
 
 ## Context
 
-The project now contains several independently useful mechanisms: a bounded architecture mutation surface, W&B experiment logging, signed ARIA advisory feedback ingestion, passive recurrent-state observation, a fixed-frame 3D dynamics viewer, and a separate local experiment orchestrator/data-protocol candidate.
+The project now contains several independently useful mechanisms: a bounded architecture mutation surface, W&B experiment logging, signed ARIA advisory feedback ingestion, passive recurrent-state observation, a fixed-frame 3D dynamics viewer, and a separate experiment orchestrator/data-protocol contribution.
 
 The failure mode is not lack of capability; it is accidental authority collapse. An architecture search agent must be able to change a candidate without moving the measurement apparatus. External analysis must be able to advise without executing. Observability must expose state without altering selection. Operational tooling must record and schedule experiments without silently redefining the scientific protocol.
 
@@ -38,8 +37,8 @@ The smallest invariant kernel is:
 | DYN-3D offline viewer | Merged via PR #7 | Human visualization only |
 | W&B scalar/run logging in RSI | Merged/current | Evidence export; no execution authority |
 | Main-line telemetry contribution | Merged via PR #4 | Opt-in telemetry/export |
-| Local experiment orchestrator + evidence ledger | Implemented locally; not published | Scheduling/execution under operator control |
-| Explicit data-protocol package | Implemented locally; owner-review candidate | Protocol validation; opt-in only |
+| Experiment orchestrator + evidence ledger | Separate contribution; not part of this branch | Scheduling/execution under operator control |
+| Explicit data-protocol package | Separate contribution; not part of this branch | Protocol validation; opt-in only |
 | Official benchmark completion gate | Open | Evaluation only |
 
 The status column is deliberately separate from authority. A merged feature does not gain authority merely because it exists, and a locally implemented feature is not treated as published or accepted upstream.
@@ -70,7 +69,7 @@ No arrow from ARIA, the viewer, or dynamic metrics leads directly to execution o
 | ARIA receiver | Signed external analysis | Append-only local advisory inbox | Execute commands, mutate research code, enqueue jobs, or elevate sender authority |
 | Dynamic Observatory | Model outputs from deterministic probe | Derived observation artifacts/metrics | Change model outputs, gradients, RNG state, optimizer state, or `test_loss` |
 | DYN-3D viewer | Local observation/reference JSON | Browser-local view state only | Fetch remote data or emit a selection score |
-| Orchestrator candidate | Reviewed RunSpecs and trusted local commands | Queue/evidence/ledger/runtime state | Redefine scientific protocol implicitly or publish without owner review |
+| Orchestrator contribution | Reviewed RunSpecs and trusted local commands | Queue/evidence/ledger/runtime state | Redefine scientific protocol implicitly or bypass operator review |
 
 This is an authority lattice rather than a feature list. Data may move upward as evidence, but control does not automatically move with it.
 
@@ -190,11 +189,11 @@ It intentionally does not calculate or emit a keep/discard score. Human interpre
 ![DYN-3D fixed-reference verification view](../screenshots/dyn3d-fixed-reference.png)
 
 The screenshot is a documentation verification fixture generated locally from the current code path; it is not a benchmark result or promotion claim.
-## Adjacent local orchestrator candidate
+## Adjacent orchestrator contribution
 
-The main-line integration worktree contains a substantially larger local operator package at `tools/experiment_orchestrator/`. It is **not part of this `rsi_exp` checkout and is not publication-approved**.
+A separate contribution contains the operator package at `tools/experiment_orchestrator/`. It is **not part of this `rsi_exp` checkout**.
 
-Its implemented local responsibilities include:
+Its documented responsibilities include:
 
 - serial queueing and process supervision;
 - explicit RunSpec preparation before submission;
@@ -211,9 +210,15 @@ It is not a sandbox, remote multi-user service, implicit curriculum system, or a
 
 The orchestrator is intentionally downstream of reviewed experiment specifications. It may execute a validated RunSpec, but it must not invent scientific protocol changes because a scheduling or telemetry mechanism exists.
 
+The adjacent operator surface is illustrated by the following documentation capture:
+
+![Adjacent orchestrator dashboard](../screenshots/orchestrator-dashboard.png)
+
+The image documents the operator interface only; it does not imply that the adjacent contribution is merged into `rsi_exp`.
+
 ## Adjacent data-protocol candidate
 
-The same local integration branch adds an opt-in explicit data protocol. Without `--data-protocol`, the original trainer path remains in effect.
+The same adjacent contribution adds an opt-in explicit data protocol. Without `--data-protocol`, the original trainer path remains in effect.
 
 The protocol makes source identity, subset/configuration, immutable revision, text column, tokenizer identity, context length, packing, EOS handling, incomplete-window policy, microbatch handling, split membership, traversal seed, split seed and role limits explicit.
 
@@ -228,7 +233,7 @@ Changing from the legacy split to a hash/native split is treated as a new protoc
 
 Local Cosmopedia validation and short RSI `test_loss` are development/search signals. They are not substitutes for the track's official evaluation surface.
 
-The local integration candidate records the official gate as HellaSwag, ARC-Easy, PIQA, WinoGrande, and held-out WikiText-103 perplexity through the prescribed harness/process. The current generic harness task named `wikitext` targets WikiText-2, so it must not be relabelled as WikiText-103 evidence.
+The adjacent contribution records the official gate as HellaSwag, ARC-Easy, PIQA, WinoGrande, and held-out WikiText-103 perplexity through the prescribed harness/process. The current generic harness task named `wikitext` targets WikiText-2, so it must not be relabelled as WikiText-103 evidence.
 
 Until the exact WikiText-103 slice, preprocessing, denominator, window/stride and harness revision are pinned and reviewed, that portion of the official gate remains open.
 
@@ -328,7 +333,7 @@ Additional manual checks:
 - a bad signature is rejected and a valid signed payload is stored without execution;
 - DYN-3D visibly distinguishes fixed-reference and uncalibrated-local projection modes.
 
-The local orchestrator candidate has a separate test surface under `tools/experiment_orchestrator/tests` plus repository data-protocol tests. Passing those tests does not itself authorize publication.
+The adjacent orchestrator contribution has its own test surface under `tools/experiment_orchestrator/tests` plus data-protocol tests. Those checks are outside this branch's verification surface.
 ## Change provenance
 
 | Change | Reference |
@@ -339,52 +344,24 @@ The local orchestrator candidate has a separate test surface under `tools/experi
 | Fixed-frame 3D viewer | PR #7, feature commit `c0dcf48` |
 | Passive-observer boundary hardening | PR #7, feature commit `2ffa5bf` |
 | Current merged `rsi_exp` head used by this ADR | `c16e4cc` |
-| Local orchestrator/data-protocol owner-review candidate | `80a926c` |
 
 ## Publication gate
 
-Implementation, test success, local commits, and prior PR merges are not equivalent to approval for the next publication candidate.
-
-The current owner-review instruction for the adjacent orchestrator package requires the review package to include the orchestrator, experiment ledger, W&B adapter and telemetry integration, with readable diffs, test receipts, startup instructions and proposed PR text. No new push, PR, PR update, reviewer request, merge or release for that package occurs until the owner reviews the actual candidate and explicitly approves publication.
-
-This ADR records that workflow requirement; it does not claim a machine-enforced branch-protection mechanism exists.
+Implementation, test success, and merge status are distinct from release authority. Publication should preserve an explicit review step, and this ADR does not claim that a machine-enforced branch-protection mechanism exists.
 
 ## Open acceptance gates
 
 - Verify the final transport hop from W&B/ARIA into the signed local advisory receiver in the actual account topology.
 - Complete and pin the exact official WikiText-103 evaluation procedure.
-- Review the local orchestrator/data-protocol candidate as one coherent contribution before publication.
+- Review and integrate the adjacent orchestrator/data-protocol contribution as a separate change set.
 - Decide whether dynamic observables remain purely diagnostic or become part of a future explicitly revised research objective.
 - Establish a baseline reference-frame custody convention for repeated cross-run DYN-3D comparisons.
 - Preserve exact environment metadata when small numerical run differences may be confounded by OS/Python/PyTorch/CUDA/hardware differences.
 
 ## Operational companion
 
-See [`../RUNBOOK.md`](../RUNBOOK.md) for setup, execution, signed-feedback operation, dynamic-observation capture, viewer use, failure recovery, evidence locations, verification, and review-preparation steps.
+See [`../RUNBOOK.md`](../RUNBOOK.md) for setup, execution, signed-feedback operation, dynamic-observation capture, viewer use, failure recovery, evidence locations, verification, and adjacent-contribution reference.
 
 ## Supersession rule
 
 Any future change that alters the scientific ruler, authority graph, trusted transport boundary, provenance vocabulary, or execution/publication gate must either update this ADR explicitly or supersede it with a new ADR. Feature additions that preserve these invariants may reference this decision without reopening it.
-## Portability and documentation verification — 2026-09-17
-
-The documentation pass exposed one checkout-layout defect: `prepare.py` and `train.py` assumed `rsi_exp` was always nested beneath its resource root. Direct branch/worktree checkouts therefore resolved the tokenizer and local data one directory too high.
-
-The resource-root lookup now accepts both supported layouts by preferring the script directory when the committed SP16K tokenizer exists there, otherwise falling back to its parent. This changes path resolution only; dataset content, tokenizer identity, model configuration, token budget, evaluation and `test_loss` semantics are unchanged. A regression test now requires both entry points to resolve the committed tokenizer, training set and validation set.
-
-Fresh local verification after the fix:
-
-```text
-prepare.py: PASS
-train tokens: 1,000,000 / 1,000,000 across 1,002 documents
-validation tokens: 50,176 across 53 documents
-unittest: 28 passed
-compileall: PASS
-baseline factory: LoopedGPTModel, 42,070,080 parameters
-git diff --check: PASS
-```
-
-The adjacent owner-review orchestrator surface has a separate browser qualification capture:
-
-![Local orchestrator owner-review dashboard](../screenshots/orchestrator-dashboard-owner-review.png)
-
-That image documents a **local candidate**, not a merged or publication-approved component.
