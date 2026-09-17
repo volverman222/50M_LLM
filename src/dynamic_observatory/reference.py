@@ -38,7 +38,11 @@ class DynamicReferenceFrame:
             raise ValueError("reference frames must be DERIVED")
         if not self.run_id or not self.probe_id or not self.trace_name:
             raise ValueError("run_id, probe_id, and trace_name are required")
-        if isinstance(self.checkpoint_tokens, bool) or self.checkpoint_tokens < 0:
+        if (
+            isinstance(self.checkpoint_tokens, bool)
+            or not isinstance(self.checkpoint_tokens, int)
+            or self.checkpoint_tokens < 0
+        ):
             raise ValueError("checkpoint_tokens must be a non-negative integer")
         center = _finite_vector(self.center, "center")
         if not self.basis or len(self.basis) != len(center):

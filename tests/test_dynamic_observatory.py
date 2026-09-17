@@ -238,3 +238,14 @@ class ReferenceCliTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(frame.run_id, "baseline")
         self.assertEqual(frame.probe_id, "probe-v1")
+
+
+class ReferenceValidationTests(unittest.TestCase):
+    def test_reference_frame_requires_integer_checkpoint_tokens(self):
+        from dynamic_observatory.reference import DynamicReferenceFrame
+
+        with self.assertRaises(ValueError):
+            DynamicReferenceFrame(
+                run_id="r", checkpoint_tokens=1.5, probe_id="p", trace_name="t",
+                center=[0.0, 0.0], basis=[[1.0], [0.0]],
+            )
