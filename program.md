@@ -114,3 +114,7 @@ change logits, gradients, optimizer state, the token budget, or `test_loss`. Dyn
 advisory evidence only and may not participate in keep/discard selection unless the research protocol is
 explicitly revised by the project owners. Research data sources are `LIVE`, `REPLAY`, `DERIVED`, or `N/A`;
 simulated substitute measurements are prohibited.
+
+## Architecture and operations reference
+
+The system-wide decision record is [`docs/adr/ADR-0001-governed-autoresearch-evidence-boundaries.md`](docs/adr/ADR-0001-governed-autoresearch-evidence-boundaries.md). Operational setup, ARIA receiver handling, dynamic-observation workflow, recovery and review checks are in [`docs/RUNBOOK.md`](docs/RUNBOOK.md).

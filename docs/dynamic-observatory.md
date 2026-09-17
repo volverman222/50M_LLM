@@ -84,3 +84,7 @@ warning.
 The viewer provides orbit/dolly interaction, trajectory overlays, state points, delta-vector display,
 axes, selected-trace provenance, closure metrics, phase/coherence metrics, spectral metrics, and token
 checkpoint context. It never feeds a visual score back into the keep/discard rule.
+
+## System-level authority reference
+
+For the complete authority graph, comparison rules, failure semantics, screenshot provenance and operator procedure, see [`adr/ADR-0001-governed-autoresearch-evidence-boundaries.md`](adr/ADR-0001-governed-autoresearch-evidence-boundaries.md) and [`RUNBOOK.md`](RUNBOOK.md). This component document remains the detailed dynamic-observation reference.

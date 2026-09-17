@@ -106,3 +106,7 @@ orchestrator.
 `AnalysisInbox.load(digest)` returns the validated typed analysis. A consumer may use those records to
 update its evidence state and create a candidate experiment specification. Acceptance of a proposal is
 not permission to run it; normal orchestrator validation, invariants, and scheduling still apply.
+
+## System-level authority reference
+
+For the complete authority graph, publication state, failure semantics and operator procedure, see [`adr/ADR-0001-governed-autoresearch-evidence-boundaries.md`](adr/ADR-0001-governed-autoresearch-evidence-boundaries.md) and [`RUNBOOK.md`](RUNBOOK.md). This component document remains the detailed ARIA transport/contract reference.
