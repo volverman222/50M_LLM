@@ -1,0 +1,22 @@
+{
+  "description": "Held-out perplexity of the 5B-token checkpoint when changing num_loops at inference (trained with num_loops=2). WikiText-103 test split, first 400 non-overlapping 128-token windows of the concatenated text (51,200 scored tokens), SentencePiece 16K tokens.",
+  "scored_tokens": 51200,
+  "results": {
+    "1": {
+      "mean_token_nll": 5.5381,
+      "token_perplexity": 254.2
+    },
+    "2": {
+      "mean_token_nll": 4.8675,
+      "token_perplexity": 130.0
+    },
+    "3": {
+      "mean_token_nll": 4.9038,
+      "token_perplexity": 134.8
+    },
+    "4": {
+      "mean_token_nll": 5.0609,
+      "token_perplexity": 157.7
+    }
+  }
+}

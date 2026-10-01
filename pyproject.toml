@@ -19,6 +19,7 @@ dependencies = [
 training = ["datasets", "huggingface-hub", "wandb"]
 benchmarks = ["datasets", "matplotlib", "requests"]
 huggingface = ["transformers"]
+eval = ["lm-eval==0.4.9.1", "transformers<5", "datasets>=3,<4"]
 dev = ["pytest"]
 
 [tool.setuptools.packages.find]
