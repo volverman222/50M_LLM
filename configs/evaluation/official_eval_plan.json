@@ -1,7 +1,7 @@
 {
-  "project": "Devpost Hackathon \u2014 50M_LLM",
+  "project": "Devpost Hackathon — 50M_LLM",
   "purpose": "official_evaluation_plan",
-  "execution_status": "not_implemented_not_run",
+  "execution_status": "executed",
   "required_multiple_choice": [
     "hellaswag",
     "arc_easy",
@@ -9,8 +9,13 @@
     "winogrande"
   ],
   "engine": "lm-evaluation-harness",
-  "engine_revision": null,
-  "checkpoint_identity": null,
+  "engine_revision": "lm-eval==0.4.9.1",
+  "checkpoint_identity": {
+    "file": "checkpoint-5.0B.pt",
+    "sha256": "a77a3bdbdd53d3dbdec4fbd00e07e2a46ecc09882a8b79dcb28ebb303ad9d445",
+    "tokens_seen": 5000001536,
+    "trainable_parameters": 42070080
+  },
   "heldout": {
     "dataset": "Salesforce/wikitext",
     "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
@@ -18,9 +23,9 @@
     "development_split": "validation",
     "final_split": "test",
     "subset_document_ids": null,
-    "context_length": null,
-    "stride": null,
-    "scoring_unit": null
+    "context_length": 128,
+    "stride": 128,
+    "scoring_unit": "token (word perplexity and bits per byte also reported)"
   },
   "gates": [
     "Team approves exact held-out slice and scoring/window convention",
@@ -32,5 +37,7 @@
   "sources": [
     "https://gibc-v2.devpost.com/rules",
     "https://raw.githubusercontent.com/EleutherAI/lm-evaluation-harness/main/lm_eval/tasks/wikitext/wikitext.yaml"
-  ]
+  ],
+  "receipt": "results/eval_lm_harness_5B.json",
+  "script": "scripts/eval_lm_harness.py"
 }

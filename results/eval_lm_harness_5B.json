@@ -1,0 +1,59 @@
+{
+  "checkpoint": "checkpoint-5.0B.pt",
+  "checkpoint_sha256": "a77a3bdbdd53d3dbdec4fbd00e07e2a46ecc09882a8b79dcb28ebb303ad9d445",
+  "tokenizer_sha256": "a8e84302bbddff8d91aa6ab305e0861f13ee6a08bd822f6c164253a16f6b5ba5",
+  "trainable_parameters": 42070080,
+  "tokens_seen": 5000001536,
+  "context_length": 128,
+  "num_loops": 2,
+  "lm_eval_version": {
+    "arc_easy": 1.0,
+    "hellaswag": 1.0,
+    "piqa": 1.0,
+    "winogrande": 1.0
+  },
+  "limit": null,
+  "results": {
+    "arc_easy": {
+      "alias": "arc_easy",
+      "acc,none": 0.39941077441077444,
+      "acc_stderr,none": 0.010050018228741988,
+      "acc_norm,none": 0.37584175084175087,
+      "acc_norm_stderr,none": 0.009938436373170647
+    },
+    "hellaswag": {
+      "alias": "hellaswag",
+      "acc,none": 0.27504481179047996,
+      "acc_stderr,none": 0.004456242601950599,
+      "acc_norm,none": 0.28380800637323245,
+      "acc_norm_stderr,none": 0.004499233874427458
+    },
+    "piqa": {
+      "alias": "piqa",
+      "acc,none": 0.5930359085963003,
+      "acc_stderr,none": 0.011462093919190149,
+      "acc_norm,none": 0.5903155603917302,
+      "acc_norm_stderr,none": 0.011473932007187755
+    },
+    "winogrande": {
+      "alias": "winogrande",
+      "acc,none": 0.5019731649565904,
+      "acc_stderr,none": 0.014052376259225643
+    }
+  },
+  "wikitext103_test": {
+    "dataset": "Salesforce/wikitext",
+    "config": "wikitext-103-raw-v1",
+    "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+    "split": "test",
+    "rows": 2891,
+    "tokens": 379261,
+    "windows": 2940,
+    "scored_tokens": 376320,
+    "mean_token_nll": 4.8668526681913,
+    "token_perplexity": 129.91139851253672,
+    "word_perplexity": 2105.3820332825235,
+    "bits_per_byte": 2.0680501597798133
+  },
+  "seconds": 646.7
+}
