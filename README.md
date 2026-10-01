@@ -9,9 +9,9 @@ saved, together with a compact 16K SentencePiece vocabulary and tied embeddings,
 
 ![Architecture](assets/final/01_architecture.png)
 
-- 🎬 Demo video: linked from the Devpost submission
+- 🎬 Demo video (2:58): https://youtu.be/tdG0UXg4qSI
 - 📈 Training logs: Weights & Biases project `gpt2-50M`, runs `qe9x3h4q` (phase 1) and `qutvxppl` (phase 2)
-- 💾 Weights: Hugging Face [`50m-llm/mi-llm-50m-checkpoints`](https://huggingface.co/50m-llm/mi-llm-50m-checkpoints)
+- 💾 Weights: Hugging Face [`50m-llm/mi-llm-50m-checkpoints`](https://huggingface.co/50m-llm/mi-llm-50m-checkpoints) — submitted model: [`rsi-2b-to-5b/checkpoints/checkpoint-5.0B.pt`](https://huggingface.co/50m-llm/mi-llm-50m-checkpoints/blob/main/rsi-2b-to-5b/checkpoints/checkpoint-5.0B.pt) (SHA-256 `a77a3bdb…`, the file evaluated below); phase-1 checkpoint: `rsi-2b-20260917/final.pt`
 
 ## Model
 
